@@ -102,10 +102,16 @@ The temperature plot (at t=100s, x=0.5, y=*):
    :width: 500px
 """
 
-import os, sys, tempfile
+import os, sys, tempfile,inspect
 from time import localtime, strftime
-from daetools.pyDAE.data_reporters import *
 from daetools.pyDAE import *
+
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir)
+
+import daetools_reporters
+
 
 # Standard variable types are defined in variable_types.py
 from pyUnits import m, kg, s, K, Pa, mol, J, W
@@ -243,30 +249,13 @@ class simTutorial(daeSimulation):
             for y in range(1, self.m.y.NumberOfPoints - 1):
                 self.m.T.SetInitialCondition(x, y, 300 * K)
 
-def setupDataReporters(simulation):
-
-    datareporter = daeDelegateDataReporter()
-
-    dr = daeJSONFileDataReporter()
-
-    datareporter.AddDataReporter(dr)
-
-    json_filename = __file__ + '.json'
-    simName = os.path.basename(json_filename) + '_' + strftime(" [%d.%m.%Y %H:%M:%S]", localtime())
-    dr.Connect(json_filename, simName)
-
-    print('%s (%s): %s' % (
-    dr.__class__.__name__, dr.ConnectString, 'connected' if dr.IsConnected() else 'NOT connected'))
-
-    return datareporter
-
 
 
 def run(**kwargs):
     simulation = simTutorial()
     return daeActivity.simulate(simulation, reportingInterval = 5, 
                                             timeHorizon       = 500,
-                                            datareporter=setupDataReporters(simulation),
+                                            datareporter=daetools_reporters.setupDataReporters(simulation),
                                             **kwargs)
 
 if __name__ == "__main__":
