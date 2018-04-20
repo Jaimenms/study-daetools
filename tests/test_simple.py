@@ -8,6 +8,8 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 
 from daetools.pyDAE import *
+from daetools_reporters import setupDataReporters
+
 
 class mod_test1(daeModel):
 
@@ -54,8 +56,6 @@ class sim_test1(daeSimulation):
 
 
 def test_test1():
-
-    from daetools_reporters import setupDataReporters
 
     sim = sim_test1()
 
