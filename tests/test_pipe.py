@@ -12,13 +12,15 @@ from daetools.pyDAE import *
 from daetools_reporters import setupDataReporters
 
 
-class mod_test1(daeModel):
+class Pipe(daeModel):
 
     def __init__(self, Name, Parent=None, Description=""):
 
         from pyUnits import m, kg, s, K, Pa, mol, J, W
 
         daeModel.__init__(self, Name, Parent, Description)
+
+        self.x = daeDomain("x", self, unit(), "Axial Position")
 
         # Defining Parameters
 
@@ -29,14 +31,21 @@ class mod_test1(daeModel):
         self.mu = daeParameter("mu", Pa * s, self, "Dynamic viscosity")
         self.ep = daeParameter("epsilon", m, self, "Roughness")
         self.PR = daeParameter("PR", Pa, self, "Pressure reference")
-        self.PA = daeParameter("PA", unit(), self, "Pressure Inlet")
-        self.PB = daeParameter("PB", unit(), self, "Pressure Outlet")
+
+        # self.PA = daeParameter("PA", unit(), self, "Pressure Inlet")
+        # self.PB = daeParameter("PB", unit(), self, "Pressure Outlet")
 
         # Defining Variables
+        self.P = daeVariable("P", no_t, self)
+        self.P.Description = "Pressure"
+        self.P.DistributeOnDomain(self.x)
+
         self.v = daeVariable("v", velocity_t, self)
         self.v.Description = "Velocity"
+
         self.fD = daeVariable("f_D", no_t, self)
         self.fD.Description = "Darcy friction factor"
+
         self.k = daeVariable("k", mass_flowrate_t, self)
         self.k.Description = "Mass flowrate"
 
@@ -59,7 +68,7 @@ class mod_test1(daeModel):
         eq.Residual = 1 / Sqrt(self.fD()) + 2. * Log10(self.ep() / 3.7 / self.D() + 2.51 / Re / Sqrt(self.fD()))
 
         eq = self.CreateEquation("MomBal", "Momentum balance")
-        eq.Residual = self.PA() - self.PB() - DeltaP
+        eq.Residual = self.P(0) - self.P(1) - DeltaP
 
 
 class sim_test1(daeSimulation):
@@ -68,12 +77,14 @@ class sim_test1(daeSimulation):
 
         daeSimulation.__init__(self)
 
-        self.m = mod_test1("test1")
+        self.m = Pipe("test1")
         self.m.Description = "Testing the solution for a pipe"
         self.report_filename = __file__ + '.json'
 
 
     def SetUpParametersAndDomains(self):
+
+        self.m.x.CreateArray(2)
 
         # Setting Parameter values
         self.m.g.SetValue( 9.81 * m/ s**2 )
@@ -83,8 +94,6 @@ class sim_test1(daeSimulation):
         self.m.mu.SetValue( 0.001 * Pa * s )
         self.m.ep.SetValue( 0.0018*0.0254 * m )
         self.m.PR.SetValue( 100000. * Pa )
-        self.m.PA.SetValue( 1. )
-        self.m.PB.SetValue( 0.995 )
 
 
     def SetUpVariables(self):
@@ -92,7 +101,10 @@ class sim_test1(daeSimulation):
         # Setting Variable Initial Guesses
         self.m.fD.SetInitialGuesses(0.018 * unit())
         self.m.v.SetInitialGuesses(2. * m / s)
+
         self.m.k.SetInitialGuesses(10. * kg / s)
+        self.m.P.AssignValue(0, 1. * unit())
+        self.m.P.AssignValue(1, 0.995 * unit())
 
 
     def Run(self):
