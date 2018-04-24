@@ -20,7 +20,7 @@ class Pipe(daeModel):
 
         daeModel.__init__(self, Name, Parent, Description)
 
-        self.x = daeDomain("x", self, unit(), "Axial Position")
+        self.x = daeDomain("x", self, unit(), "X axis domain")
 
         # Defining Parameters
 
@@ -31,9 +31,6 @@ class Pipe(daeModel):
         self.mu = daeParameter("mu", Pa * s, self, "Dynamic viscosity")
         self.ep = daeParameter("epsilon", m, self, "Roughness")
         self.PR = daeParameter("PR", Pa, self, "Pressure reference")
-
-        # self.PA = daeParameter("PA", unit(), self, "Pressure Inlet")
-        # self.PB = daeParameter("PB", unit(), self, "Pressure Outlet")
 
         # Defining Variables
         self.P = daeVariable("P", no_t, self)
@@ -54,11 +51,13 @@ class Pipe(daeModel):
 
         daeModel.DeclareEquations(self)
 
+        dP_dx = lambda x: d(self.P(x), self.x, eCFDM)
+
         # Intermediate variables
         A = 0.25 * 3.14 * self.D() ** 2
         Re = self.D() * self.v() * self.rho() / self.mu()
         hL = 0.5 * self.fD() * self.v() ** 2 / ( self.D() * self.g() )
-        DeltaP = self.g() * self.rho() * hL * self.L() / self.PR()
+        DeltaP = self.g() * self.rho() * self.L() * hL / self.PR()
 
         # Equations
         eq = self.CreateEquation("v", "Velocity")
@@ -68,7 +67,51 @@ class Pipe(daeModel):
         eq.Residual = 1 / Sqrt(self.fD()) + 2. * Log10(self.ep() / 3.7 / self.D() + 2.51 / Re / Sqrt(self.fD()))
 
         eq = self.CreateEquation("MomBal", "Momentum balance")
-        eq.Residual = self.P(0) - self.P(1) - DeltaP
+        x = eq.DistributeOnDomain(self.x, eOpenClosed)
+        #eq.Residual = self.P(0) - self.P(1) - DeltaP
+        eq.Residual = dP_dx(x) + DeltaP
+
+
+class TwoPipes(daeModel):
+
+    def __init__(self, Name, Parent = None, Description = ""):
+        daeModel.__init__(self, Name, Parent, Description)
+
+        self.pipe = []
+        self.pipe.append(Pipe("pipe_0", self))
+        self.pipe.append(Pipe("pipe_1", self))
+
+    def DeclareEquations(self):
+        daeModel.DeclareEquations(self)
+
+
+class TwoConnectedPipes(daeModel):
+
+    def __init__(self, Name, Parent = None, Description = ""):
+        daeModel.__init__(self, Name, Parent, Description)
+
+        # Defining Variables
+        self.Pnode = daeVariable("P_node", no_t, self)
+        self.Pnode.Description = "Nodal Pressure"
+
+        self.pipe = []
+        self.pipe.append(Pipe("pipe_0", self))
+        self.pipe.append(Pipe("pipe_1", self))
+
+
+
+    def DeclareEquations(self):
+        daeModel.DeclareEquations(self)
+
+        eq = self.CreateEquation("Connection_Node_1_a")
+        eq.Residual = self.Pnode() - self.pipe[1].P(0)
+
+        eq = self.CreateEquation("Connection_Node_1_b")
+        eq.Residual = self.pipe[0].P(10) - self.Pnode()
+
+        eq = self.CreateEquation("Connection_Node_2")
+        eq.Residual = self.pipe[0].k() - self.pipe[1].k()
+
 
 
 class sim_test1(daeSimulation):
@@ -79,13 +122,14 @@ class sim_test1(daeSimulation):
 
         self.m = Pipe("test1")
         self.m.Description = "Testing the solution for a pipe"
+
         self.report_filename = __file__ + '.json'
 
 
     def SetUpParametersAndDomains(self):
 
-        self.m.x.CreateArray(2)
-
+        #self.m.x.CreateArray(2)
+        self.m.x.CreateStructuredGrid(10, 0.0, 1.0)
         # Setting Parameter values
         self.m.g.SetValue( 9.81 * m/ s**2 )
         self.m.D.SetValue( 4.026*0.0254 * m )
@@ -95,16 +139,131 @@ class sim_test1(daeSimulation):
         self.m.ep.SetValue( 0.0018*0.0254 * m )
         self.m.PR.SetValue( 100000. * Pa )
 
-
     def SetUpVariables(self):
 
         # Setting Variable Initial Guesses
         self.m.fD.SetInitialGuesses(0.018 * unit())
         self.m.v.SetInitialGuesses(2. * m / s)
-
         self.m.k.SetInitialGuesses(10. * kg / s)
         self.m.P.AssignValue(0, 1. * unit())
-        self.m.P.AssignValue(1, 0.995 * unit())
+        self.m.P.AssignValue(10, 0.995 * unit())
+
+
+    def Run(self):
+        # A custom operating procedure, if needed.
+        # Here we use the default one:
+        daeSimulation.Run(self)
+
+
+class sim_test2(daeSimulation):
+
+    def __init__(self):
+
+        daeSimulation.__init__(self)
+
+        self.m = TwoPipes("test2")
+        self.m.Description = "Testing the solution for two disconnected pipes"
+
+        self.report_filename = __file__ + '.json'
+
+
+    def SetUpParametersAndDomains(self):
+
+        #self.m.x.CreateArray(2)
+        self.m.pipe[0].x.CreateStructuredGrid(10, 0.0, 1.0)
+        # Setting Parameter values
+        self.m.pipe[0].g.SetValue( 9.81 * m/ s**2 )
+        self.m.pipe[0].D.SetValue( 4.026*0.0254 * m )
+        self.m.pipe[0].L.SetValue( 1.0 * m )
+        self.m.pipe[0].rho.SetValue( 1000 * kg / m**3 )
+        self.m.pipe[0].mu.SetValue( 0.001 * Pa * s )
+        self.m.pipe[0].ep.SetValue( 0.0018*0.0254 * m )
+        self.m.pipe[0].PR.SetValue( 100000. * Pa )
+
+        #self.m.x.CreateArray(2)
+        self.m.pipe[1].x.CreateStructuredGrid(10, 0.0, 1.0)
+        # Setting Parameter values
+        self.m.pipe[1].g.SetValue( 9.81 * m/ s**2 )
+        self.m.pipe[1].D.SetValue( 4.026*0.0254 * m )
+        self.m.pipe[1].L.SetValue( 1.0 * m )
+        self.m.pipe[1].rho.SetValue( 1000 * kg / m**3 )
+        self.m.pipe[1].mu.SetValue( 0.001 * Pa * s )
+        self.m.pipe[1].ep.SetValue( 0.0018*0.0254 * m )
+        self.m.pipe[1].PR.SetValue( 100000. * Pa )
+
+    def SetUpVariables(self):
+
+        # Setting Variable Initial Guesses
+        self.m.pipe[0].fD.SetInitialGuesses(0.018 * unit())
+        self.m.pipe[0].v.SetInitialGuesses(2. * m / s)
+        self.m.pipe[0].k.SetInitialGuesses(10. * kg / s)
+        self.m.pipe[0].P.AssignValue(0, 1. * unit())
+        self.m.pipe[0].P.AssignValue(10, 0.995 * unit())
+
+        # Setting Variable Initial Guesses
+        self.m.pipe[1].fD.SetInitialGuesses(0.018 * unit())
+        self.m.pipe[1].v.SetInitialGuesses(2. * m / s)
+        self.m.pipe[1].k.SetInitialGuesses(10. * kg / s)
+        self.m.pipe[1].P.AssignValue(0, 1. * unit())
+        self.m.pipe[1].P.AssignValue(10, 0.995 * unit())
+
+    def Run(self):
+        # A custom operating procedure, if needed.
+        # Here we use the default one:
+        daeSimulation.Run(self)
+
+
+class sim_test3(daeSimulation):
+
+    def __init__(self):
+
+        daeSimulation.__init__(self)
+
+        self.m = TwoConnectedPipes("test3")
+        self.m.Description = "Testing the solution for two connected pipes"
+
+        self.report_filename = __file__ + '.json'
+
+
+    def SetUpParametersAndDomains(self):
+
+        #self.m.x.CreateArray(2)
+        self.m.pipe[0].x.CreateStructuredGrid(10, 0.0, 1.0)
+        # Setting Parameter values
+        self.m.pipe[0].g.SetValue( 9.81 * m/ s**2 )
+        self.m.pipe[0].D.SetValue( 4.026*0.0254 * m )
+        self.m.pipe[0].L.SetValue( 1.0 * m )
+        self.m.pipe[0].rho.SetValue( 1000 * kg / m**3 )
+        self.m.pipe[0].mu.SetValue( 0.001 * Pa * s )
+        self.m.pipe[0].ep.SetValue( 0.0018*0.0254 * m )
+        self.m.pipe[0].PR.SetValue( 100000. * Pa )
+
+        #self.m.x.CreateArray(2)
+        self.m.pipe[1].x.CreateStructuredGrid(10, 0.0, 1.0)
+        # Setting Parameter values
+        self.m.pipe[1].g.SetValue( 9.81 * m/ s**2 )
+        self.m.pipe[1].D.SetValue( 4.026*0.0254 * m )
+        self.m.pipe[1].L.SetValue( 1.0 * m )
+        self.m.pipe[1].rho.SetValue( 1000 * kg / m**3 )
+        self.m.pipe[1].mu.SetValue( 0.001 * Pa * s )
+        self.m.pipe[1].ep.SetValue( 0.0018*0.0254 * m )
+        self.m.pipe[1].PR.SetValue( 100000. * Pa )
+
+    def SetUpVariables(self):
+
+        self.m.Pnode.SetInitialGuesses(0.998 * unit())
+
+        # Setting Variable Initial Guesses
+        self.m.pipe[0].fD.SetInitialGuesses(0.018 * unit())
+        self.m.pipe[0].v.SetInitialGuesses(2. * m / s)
+        self.m.pipe[0].k.SetInitialGuesses(10. * kg / s)
+        self.m.pipe[0].P.AssignValue(0, 1. * unit())
+
+        # Setting Variable Initial Guesses
+        self.m.pipe[1].fD.SetInitialGuesses(0.018 * unit())
+        self.m.pipe[1].v.SetInitialGuesses(2. * m / s)
+        self.m.pipe[1].k.SetInitialGuesses(10. * kg / s)
+        self.m.pipe[1].P.AssignValue(10, 0.995 * unit())
 
 
     def Run(self):
@@ -115,12 +274,31 @@ class sim_test1(daeSimulation):
 
 def test_test1():
 
-    data = main()
+    data = main(simulation = sim_test1())
 
     assert round( data['v']['Values'][0] - 2.36909, 4) == 0.0
 
 
-def main():
+def test_test2():
+
+    data = main(simulation = sim_test2())
+
+    print(data)
+
+    assert round( data['pipe_0.v']['Values'][0] - 2.36909, 4) == 0.0
+
+
+def test_test3():
+
+    data = main(simulation = sim_test3())
+
+    print(data)
+
+    assert round( data['pipe_0.v']['Values'][0] - 1.64589, 4) == 0.0
+
+
+
+def main(simulation = sim_test1()):
 
     log = daeStdOutLog()
     solver = daeIDAS()
@@ -133,7 +311,6 @@ def main():
     #cfg.SetInteger("daetools.IDAS.numberOfSTNRebuildsDuringInitialization", 10000)
     #print(cfg)
 
-    simulation = sim_test1()
     simulation.m.SetReportingOn(True)
     #simulation.m.SetReportingInterval(10)
     #simulation.m.SetTimeHorizon(1000)
