@@ -77,9 +77,9 @@ class TwoPipes(daeModel):
     def __init__(self, Name, Parent = None, Description = ""):
         daeModel.__init__(self, Name, Parent, Description)
 
-        self.pipe = []
-        self.pipe.append(Pipe("pipe_0", self))
-        self.pipe.append(Pipe("pipe_1", self))
+        self.pipe = {}
+        self.pipe['pipe_0'] = Pipe("pipe_0", self)
+        self.pipe['pipe_1'] = Pipe("pipe_1", self)
 
     def DeclareEquations(self):
         daeModel.DeclareEquations(self)
@@ -170,42 +170,42 @@ class sim_test2(daeSimulation):
     def SetUpParametersAndDomains(self):
 
         #self.m.x.CreateArray(2)
-        self.m.pipe[0].x.CreateStructuredGrid(10, 0.0, 1.0)
+        self.m.pipe['pipe_0'].x.CreateStructuredGrid(10, 0.0, 1.0)
         # Setting Parameter values
-        self.m.pipe[0].g.SetValue( 9.81 * m/ s**2 )
-        self.m.pipe[0].D.SetValue( 4.026*0.0254 * m )
-        self.m.pipe[0].L.SetValue( 1.0 * m )
-        self.m.pipe[0].rho.SetValue( 1000 * kg / m**3 )
-        self.m.pipe[0].mu.SetValue( 0.001 * Pa * s )
-        self.m.pipe[0].ep.SetValue( 0.0018*0.0254 * m )
-        self.m.pipe[0].PR.SetValue( 100000. * Pa )
+        self.m.pipe['pipe_0'].g.SetValue( 9.81 * m/ s**2 )
+        self.m.pipe['pipe_0'].D.SetValue( 4.026*0.0254 * m )
+        self.m.pipe['pipe_0'].L.SetValue( 1.0 * m )
+        self.m.pipe['pipe_0'].rho.SetValue( 1000 * kg / m**3 )
+        self.m.pipe['pipe_0'].mu.SetValue( 0.001 * Pa * s )
+        self.m.pipe['pipe_0'].ep.SetValue( 0.0018*0.0254 * m )
+        self.m.pipe['pipe_0'].PR.SetValue( 100000. * Pa )
 
         #self.m.x.CreateArray(2)
-        self.m.pipe[1].x.CreateStructuredGrid(10, 0.0, 1.0)
+        self.m.pipe['pipe_1'].x.CreateStructuredGrid(10, 0.0, 1.0)
         # Setting Parameter values
-        self.m.pipe[1].g.SetValue( 9.81 * m/ s**2 )
-        self.m.pipe[1].D.SetValue( 4.026*0.0254 * m )
-        self.m.pipe[1].L.SetValue( 1.0 * m )
-        self.m.pipe[1].rho.SetValue( 1000 * kg / m**3 )
-        self.m.pipe[1].mu.SetValue( 0.001 * Pa * s )
-        self.m.pipe[1].ep.SetValue( 0.0018*0.0254 * m )
-        self.m.pipe[1].PR.SetValue( 100000. * Pa )
+        self.m.pipe['pipe_1'].g.SetValue( 9.81 * m/ s**2 )
+        self.m.pipe['pipe_1'].D.SetValue( 4.026*0.0254 * m )
+        self.m.pipe['pipe_1'].L.SetValue( 1.0 * m )
+        self.m.pipe['pipe_1'].rho.SetValue( 1000 * kg / m**3 )
+        self.m.pipe['pipe_1'].mu.SetValue( 0.001 * Pa * s )
+        self.m.pipe['pipe_1'].ep.SetValue( 0.0018*0.0254 * m )
+        self.m.pipe['pipe_1'].PR.SetValue( 100000. * Pa )
 
     def SetUpVariables(self):
 
         # Setting Variable Initial Guesses
-        self.m.pipe[0].fD.SetInitialGuesses(0.018 * unit())
-        self.m.pipe[0].v.SetInitialGuesses(2. * m / s)
-        self.m.pipe[0].k.SetInitialGuesses(10. * kg / s)
-        self.m.pipe[0].P.AssignValue(0, 1. * unit())
-        self.m.pipe[0].P.AssignValue(10, 0.995 * unit())
+        self.m.pipe['pipe_0'].fD.SetInitialGuesses(0.018 * unit())
+        self.m.pipe['pipe_0'].v.SetInitialGuesses(2. * m / s)
+        self.m.pipe['pipe_0'].k.SetInitialGuesses(10. * kg / s)
+        self.m.pipe['pipe_0'].P.AssignValue(0, 1. * unit())
+        self.m.pipe['pipe_0'].P.AssignValue(10, 0.995 * unit())
 
         # Setting Variable Initial Guesses
-        self.m.pipe[1].fD.SetInitialGuesses(0.018 * unit())
-        self.m.pipe[1].v.SetInitialGuesses(2. * m / s)
-        self.m.pipe[1].k.SetInitialGuesses(10. * kg / s)
-        self.m.pipe[1].P.AssignValue(0, 1. * unit())
-        self.m.pipe[1].P.AssignValue(10, 0.995 * unit())
+        self.m.pipe['pipe_1'].fD.SetInitialGuesses(0.018 * unit())
+        self.m.pipe['pipe_1'].v.SetInitialGuesses(2. * m / s)
+        self.m.pipe['pipe_1'].k.SetInitialGuesses(10. * kg / s)
+        self.m.pipe['pipe_1'].P.AssignValue(0, 1. * unit())
+        self.m.pipe['pipe_1'].P.AssignValue(10, 0.995 * unit())
 
     def Run(self):
         # A custom operating procedure, if needed.
