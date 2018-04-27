@@ -52,6 +52,8 @@ class modTutorial(daeModel):
     def __init__(self, Name, Parent = None, Description = ""):
         daeModel.__init__(self, Name, Parent, Description)
 
+        self.x = daeDomain("x", self, unit(), "X axis domain")
+
         self.tpp = daeThermoPackage("TPP", self, "")
         # CapeOpen thermo packages are available only in Windows.
         # For other platforms use CoolProp thermo package.
@@ -64,17 +66,21 @@ class modTutorial(daeModel):
         self.m     = daeParameter("m", kg, self, "Mass of water")
 
         self.cp    = daeVariable("c_p",   specific_heat_capacity_t, self, "Specific heat capacity of the liquid")
+        self.cp.DistributeOnDomain(self.x)
+
         self.kappa = daeVariable("k",     thermal_conductivity_t,   self, "Thermal conductivity of the liquid")
+        self.kappa.DistributeOnDomain(self.x)
         self.mu    = daeVariable("mu",    dynamic_viscosity_t,      self, "Viscosity of the liquid")
+        self.mu.DistributeOnDomain(self.x)
         self.Qin   = daeVariable("Q_in",  power_t,                  self, "Power of the heater")
         self.T     = daeVariable("T",     temperature_t,            self, "Temperature of the liquid")
+        self.T.DistributeOnDomain(self.x)
 
     def DeclareEquations(self):
         daeModel.DeclareEquations(self)
 
         # P, T, x arguments can be floats or adouble objects/arrays as illustrated here.
         P = 1e5 * Pa
-        T = self.T()
         x = [1.0,]
 
         # daeThermoPackage uses the default basis to calculate the properties.
@@ -84,24 +90,29 @@ class modTutorial(daeModel):
         # For instance:
         #    self.tpp.kappa(P,T,x, phase='Vapor', basis=eUndefinedBasis)
 
+
         # Calculate transport properties:
         # 1. Specific heat capacity (cp) in J/(kg*K)
         #    TPP package returns cp in J/(mol.K) (mole basis) - for some reasons it refuses to calculate it for the mass basis.
         #    Therefore, divide it by the molar mass of the mixture.
         eq = self.CreateEquation("C_p", "Specific heat capacity as a function of the temperature.")
-        eq.Residual = self.cp() - self.tpp.cp(P ,T ,x) / self.tpp.M(P ,T ,x)
+        xdomain = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.cp(xdomain) - self.tpp.cp(P ,self.T(xdomain) ,x) / self.tpp.M(P ,self.T(xdomain) ,x)
 
         # 2. Thermal conductivity (kappa) in W/(m*K)
         eq = self.CreateEquation("kappa", "Thermal conductivity as a function of the temperature.")
-        eq.Residual = self.kappa() - self.tpp.kappa(P ,T ,x)
+        xdomain = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.kappa(xdomain) - self.tpp.kappa(P ,self.T(xdomain) ,x)
 
         # 3. Dynamic viscosity (mu) in Pa*s
         eq = self.CreateEquation("mu", "Viscosity as a function of the temperature.")
-        eq.Residual = self.mu() - self.tpp.mu(P ,T ,x)
+        xdomain = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.mu(xdomain) - self.tpp.mu(P ,self.T(xdomain) ,x)
 
         # Simple integral heat balance for the liquid
         eq = self.CreateEquation("HeatBalance", "Integral heat balance equation")
-        eq.Residual = self.m() * self.cp() * dt(self.T()) - self.Qin()
+        xdomain = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.m() * self.cp(xdomain) * dt(self.T(xdomain)) - self.Qin()
 
 
 class sim_test1(daeSimulation):
@@ -115,10 +126,17 @@ class sim_test1(daeSimulation):
 
     def SetUpParametersAndDomains(self):
         self.m.m.SetValue(1 * kg)
+        self.m.x.CreateStructuredGrid(2, 0.0, 1.0)
+
 
     def SetUpVariables(self):
+
+        Nx = self.m.x.NumberOfPoints
+
+        for i in range(Nx):
+            self.m.T.SetInitialCondition(i,283 * K)
+
         self.m.Qin.AssignValue(500 * W)
-        self.m.T.SetInitialCondition(283 * K)
 
 def run(**kwargs):
     # Thermo-physical property packages are not supported by the Compute Stack approach.

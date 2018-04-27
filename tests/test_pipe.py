@@ -3,6 +3,7 @@ import sys
 import inspect
 import json
 import pprint
+import argparse
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -24,18 +25,17 @@ class Pipe(daeModel):
 
         # Defining Parameters
 
-        self.g = daeParameter("g", m / (s **2), self, "Gravity acceleration")
+        #self.g = daeParameter("g", m / (s **2), self, "Gravity acceleration")
+        self.g = Constant(9.81 * m / s **2 )
+        self.PR = Constant(1e5 * Pa)
         self.D = daeParameter("D", m, self, "Diameter")
         self.L = daeParameter("L", m, self, "Length")
         self.rho = daeParameter("rho", kg / (m ** 3), self, "Density")
         self.mu = daeParameter("mu", Pa * s, self, "Dynamic viscosity")
         self.ep = daeParameter("epsilon", m, self, "Roughness")
-        self.PR = daeParameter("PR", Pa, self, "Pressure reference")
 
         # Defining Variables
-        self.P = daeVariable("P", no_t, self)
-        self.P.Description = "Pressure"
-        self.P.DistributeOnDomain(self.x)
+        self.P = daeVariable("P", no_t, self, description = "Pressure", domains=[self.x,])
 
         self.v = daeVariable("v", velocity_t, self)
         self.v.Description = "Velocity"
@@ -56,8 +56,8 @@ class Pipe(daeModel):
         # Intermediate variables
         A = 0.25 * 3.14 * self.D() ** 2
         Re = self.D() * self.v() * self.rho() / self.mu()
-        hL = 0.5 * self.fD() * self.v() ** 2 / ( self.D() * self.g() )
-        DeltaP = self.g() * self.rho() * self.L() * hL / self.PR()
+        hL = 0.5 * self.fD() * self.v() ** 2 / ( self.D() * self.g )
+        DeltaP = self.g * self.rho() * self.L() * hL / self.PR
 
         # Equations
         eq = self.CreateEquation("v", "Velocity")
@@ -70,6 +70,7 @@ class Pipe(daeModel):
         x = eq.DistributeOnDomain(self.x, eOpenClosed)
         #eq.Residual = self.P(0) - self.P(1) - DeltaP
         eq.Residual = dP_dx(x) + DeltaP
+
 
 
 class TwoPipes(daeModel):
@@ -114,13 +115,13 @@ class TwoConnectedPipes(daeModel):
 
 
 
-class sim_test1(daeSimulation):
+class sim_test1a(daeSimulation):
 
     def __init__(self):
 
         daeSimulation.__init__(self)
 
-        self.m = Pipe("test1")
+        self.m = Pipe("test1a")
         self.m.Description = "Testing the solution for a pipe"
 
         self.report_filename = __file__ + '.json'
@@ -131,13 +132,12 @@ class sim_test1(daeSimulation):
         #self.m.x.CreateArray(2)
         self.m.x.CreateStructuredGrid(10, 0.0, 1.0)
         # Setting Parameter values
-        self.m.g.SetValue( 9.81 * m/ s**2 )
+        #self.m.g.SetValue( 9.81 * m/ s**2 )
         self.m.D.SetValue( 4.026*0.0254 * m )
         self.m.L.SetValue( 1.0 * m )
         self.m.rho.SetValue( 1000 * kg / m**3 )
         self.m.mu.SetValue( 0.001 * Pa * s )
         self.m.ep.SetValue( 0.0018*0.0254 * m )
-        self.m.PR.SetValue( 100000. * Pa )
 
     def SetUpVariables(self):
 
@@ -272,11 +272,180 @@ class sim_test3(daeSimulation):
         daeSimulation.Run(self)
 
 
-def test_test1():
 
-    data = main(simulation = sim_test1())
+
+
+class PipeWithTPP(daeModel):
+
+    def __init__(self, Name, Parent=None, Description=""):
+
+        from pyUnits import m, kg, s, K, Pa, mol, J, W
+
+        daeModel.__init__(self, Name, Parent, Description)
+
+        self.tpp = daeThermoPackage("TPP", self, "")
+
+        self.x = daeDomain("x", self, unit(), "X axis domain")
+
+        # Defining Parameters
+
+        self.T = daeParameter("T", K, self, "Temperature")
+        self.g = daeParameter("g", m / (s **2), self, "Gravity acceleration")
+        self.D = daeParameter("D", m, self, "Diameter")
+        self.L = daeParameter("L", m, self, "Length")
+        #self.rho = daeParameter("rho", kg / (m ** 3), self, "Density")
+        #self.mu = daeParameter("mu", Pa * s, self, "Dynamic viscosity")
+        self.ep = daeParameter("epsilon", m, self, "Roughness")
+        self.PR = daeParameter("PR", Pa, self, "Pressure reference")
+
+        # Defining Variables
+        self.P = daeVariable("P", no_t, self, "Pressure")
+        self.P.DistributeOnDomain(self.x)
+
+        self.v = daeVariable("v", velocity_t, self, "Velocity")
+        self.v.DistributeOnDomain(self.x)
+
+        self.fD = daeVariable("f_D", no_t, self, "Darcy friction factor")
+        self.fD.DistributeOnDomain(self.x)
+
+        self.k = daeVariable("k", mass_flowrate_t, self, "Mass flowrate")
+
+        self.kappa = daeVariable("kappa",     thermal_conductivity_t,   self, "Thermal conductivity of the liquid")
+        self.kappa.DistributeOnDomain(self.x)
+
+        self.mu    = daeVariable("mu",    dynamic_viscosity_t,      self, "Viscosity of the liquid")
+        self.mu.DistributeOnDomain(self.x)
+
+        self.rho   = daeVariable("rho",     density_t,                self, "Density of the liquid")
+        self.rho.DistributeOnDomain(self.x)
+
+        self.tpp.LoadCoolProp(["Water",],       # compound IDs in the mixture
+            [],                                 # compund CAS numbers (optional)
+            {'Liquid': eLiquid},                # dictionary {'phaseLabel' : stateOfAggregation}
+            eMass,                              # default basis is eMole (other options are eMass or eUndefinedBasis)
+            {"backend": "HEOS",
+            "referenceState": "DEF",
+            "debugLevel": "0"})                                 # options dictionary (defaut is empty)
+
+
+
+    def DeclareEquations(self):
+        daeModel.DeclareEquations(self)
+
+        dP_dx = lambda x: d(self.P(x), self.x, eCFDM)
+
+        ctpp = daeThermoPackage("CoolPropTPP", None, "")
+        ctpp.LoadCoolProp(["Water", ],  # compound IDs in the mixture
+                          [],  # unused (compund CAS numbers)
+                          {"Liquid": eLiquid},  # dictionary {'phaseLabel' : stateOfAggregation}
+                          eMass,  # optional: default basis (eMole by default)
+                          {"backend": "HEOS",
+                           "referenceState": "DEF",
+                           "debugLevel": "0"})  # optional: options dictionary (empty by default)
+
+
+        # Equations
+        eq = self.CreateEquation("rho", "Density calculation")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.rho(x) - self.tpp.rho(self.PR()*self.P(x),self.T(),[1.0,])
+
+        eq = self.CreateEquation("mu", "Viscosity calculation.")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.mu(x) - self.tpp.mu(self.PR()*self.P(x),self.T(),[1.0,])
+
+        eq = self.CreateEquation("kappa", "Thermal conductivity calculation.")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.kappa(x) - self.tpp.kappa(self.PR()*self.P(x),self.T(),[1.0,])
+
+        eq = self.CreateEquation("v", "Velocity")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        A = 0.25 * 3.14 * self.D() ** 2
+        eq.Residual = self.v(x) - self.k() / ( self.rho(x) * A )
+
+        eq = self.CreateEquation("f_D", "Friction Factor")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        Re = self.D() * self.v(x) * self.rho(x) / self.mu(x)
+        eq.Residual = 1 / Sqrt(self.fD(x)) + 2. * Log10(self.ep() / 3.7 / self.D() + 2.51 / Re / Sqrt(self.fD(x)))
+
+        eq = self.CreateEquation("MomBal", "Momentum balance")
+        x = eq.DistributeOnDomain(self.x, eOpenClosed)
+        hL = 0.5 * self.fD(x) * self.v(x) ** 2 / ( self.D() * self.g() )
+        DeltaP = self.g() * self.rho(x) * self.L() * hL / self.PR()
+        eq.Residual = dP_dx(x) + DeltaP
+
+
+
+
+class sim_test1b(daeSimulation):
+
+    def __init__(self):
+
+        daeSimulation.__init__(self)
+
+        self.m = PipeWithTPP("test1b")
+        self.m.Description = "Testing the solution for a pipe with Thermal Package"
+
+        self.report_filename = __file__ + '.json'
+
+
+    def SetUpParametersAndDomains(self):
+
+
+        self.m.x.CreateStructuredGrid(10, 0.0, 1.0)
+
+        # Setting Parameter values
+        self.m.T.SetValue( 300 * K)
+        self.m.g.SetValue( 9.81 * m/ s**2 )
+        self.m.D.SetValue( 4.026*0.0254 * m )
+        self.m.L.SetValue( 1.0 * m )
+        #self.m.rho.SetValue( 1000 * kg / m**3 )
+        #self.m.mu.SetValue( 0.001 * Pa * s )
+        self.m.ep.SetValue( 0.0018*0.0254 * m )
+        self.m.PR.SetValue( 100000. * Pa )
+
+
+    def SetUpVariables(self):
+
+        P0 = 1.0
+        P1 = 0.995
+
+        # Setting Variable Initial Guesses
+        self.m.fD.SetInitialGuesses(0.018 * unit())
+        self.m.v.SetInitialGuesses(2. * m / s)
+        self.m.rho.SetInitialGuesses(1000. * kg / m**3 )
+        self.m.mu.SetInitialGuesses(0.001 * Pa * s )
+        self.m.k.SetInitialGuesses(10. * kg / s)
+        self.m.P.AssignValue(0, P0 * unit())
+        self.m.P.AssignValue(10, P1 * unit())
+
+        Nx = self.m.x.NumberOfPoints
+
+        for i in range(Nx):
+            self.m.P.SetInitialGuess(i, P0 + i / 10 * (P0-P1) * unit())
+
+        pass
+
+
+    def Run(self):
+        cfg = daeGetConfig()
+        cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
+        # A custom operating procedure, if needed.
+        # Here we use the default one:
+        daeSimulation.Run(self)
+
+
+
+def test_test1a():
+
+    data = main(simulation = sim_test1a())
 
     assert round( data['v']['Values'][0] - 2.36909, 4) == 0.0
+
+def test_test1b():
+
+    data = main(simulation = sim_test1b())
+
+    assert round( data['v']['Values'][0][0] - 2.36909, 4) == 0.0
 
 
 def test_test2():
@@ -298,22 +467,78 @@ def test_test3():
 
 
 
-def main(simulation = sim_test1()):
+class sim_test4(daeSimulation):
 
-    log = daeStdOutLog()
+
+    def __init__(self):
+
+        import models.pipe as models_pipe
+        daeSimulation.__init__(self)
+
+        self.m = models_pipe.Pipe("test4")
+        self.m.Description = "Testing the solution for a pipe"
+
+        self.report_filename = __file__ + '.json'
+
+
+    def SetUpParametersAndDomains(self):
+
+        self.m.x.CreateStructuredGrid(10, 0.0, 1.0)
+        # Setting Parameter values
+        self.m.D.SetValue( 4.026*0.0254 * m )
+        self.m.L.SetValue( 1.0 * m )
+        self.m.ep.SetValue( 0.0018*0.0254 * m )
+
+    def SetUpVariables(self):
+
+        P0 = 1.0
+        P1 = 0.995
+
+        # Setting Variable Initial Guesses
+        self.m.fD.SetInitialGuesses(0.03 * unit())
+        self.m.v.SetInitialGuesses(2. * m / s)
+        self.m.rho.SetInitialGuesses(1000. * kg / m**3 )
+        self.m.mu.SetInitialGuesses(0.001 * Pa * s )
+        # self.m.k.SetInitialGuesses(10. * kg / s)
+        self.m.P.AssignValue(0, P0 * unit())
+        self.m.P.AssignValue(10, P1 * unit())
+        self.m.T.AssignValue(0, 300. * K)
+        self.m.k.SetInitialGuess(0, 10. * kg / s)
+
+        Nx = self.m.x.NumberOfPoints
+
+        for i in range(Nx):
+            self.m.P.SetInitialGuess(i, P0 + i / 10 * (P0-P1) * unit())
+
+    def Run(self):
+        # A custom operating procedure, if needed.
+        # Here we use the default one:
+        daeSimulation.Run(self)
+
+
+
+def test_test4():
+
+    data = main(simulation = sim_test4())
+
+    print(data)
+
+    assert round( data['v']['Values'][0] - 1.64589, 4) == 0.0
+
+
+
+def main(simulation = None):
+
+    #log = daeStdOutLog()
+    log = daePythonStdOutLog()
     solver = daeIDAS()
 
-    #cfg = daeGetConfig()
-    #cfg.SetBoolean("daetools.IDAS.printInfo", True)
-    #cfg.SetBoolean("daetools.IDAS.LineSearchOffIC", True)
-    #cfg.SetFloat("daetools.IDAS.MaxStep", 0.0)
-    #cfg.SetFloat("daetools.IDAS.NonlinConvCoef", 0.1)
-    #cfg.SetInteger("daetools.IDAS.numberOfSTNRebuildsDuringInitialization", 10000)
-    #print(cfg)
+    cfg = daeGetConfig()
+    cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
+    cfg.SetString('daetools.core.printInfo', 'true')
+    cfg.SetString('daetools.IDAS.printInfo', 'true')
 
     simulation.m.SetReportingOn(True)
-    #simulation.m.SetReportingInterval(10)
-    #simulation.m.SetTimeHorizon(1000)
 
     datareporter = setupDataReporters(simulation)
 
@@ -333,4 +558,14 @@ def main(simulation = sim_test1()):
 
 if __name__ == "__main__":
 
-    pprint.pprint(main(), indent = 4)
+    methods = {'test1a': sim_test1a, 'test1b': sim_test1b, 'test2': sim_test2, 'test3': sim_test3, 'test4': sim_test4, }
+
+    parser = argparse.ArgumentParser(description='Test pipe.')
+    parser.add_argument('case',type=str,
+                        help='Simulation case')
+
+    args = parser.parse_args()
+
+    data = main(simulation = methods[args.case]())
+
+    pprint.pprint(data, indent = 4)
