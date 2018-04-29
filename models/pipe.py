@@ -7,7 +7,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 
 from daetools.pyDAE import *
-from pyUnits import m, kg, s, K, Pa, mol, J, W
+from pyUnits import m, kg, s, K, Pa, mol, J, W, rad
 
 
 class Pipe(daeModel):
@@ -37,6 +37,7 @@ class Pipe(daeModel):
 
         # Defining Parameters
 
+        self.tetha = daeParameter("tetha", rad, self, "Angle", [self.x, ])
         self.D = daeParameter("D", m, self, "Diameter")
         self.L = daeParameter("L", m, self, "Length")
         self.ep = daeParameter("epsilon", m, self, "Roughness")
@@ -48,6 +49,11 @@ class Pipe(daeModel):
         water_temperature_t = daeVariableType("temperature_t", (K ** (1)), 273.0, 373.0, 300.0, 0.01)
         velocity_t = daeVariableType("velocity_t", (m ** (1)) * (s ** (-1)), 1e-10, 1e+02, 0.1, 1e-05)
         mass_flowrate_t = daeVariableType("mass_flowrate_t", (kg ** (1)) * (s ** (-1)), 1e-10, 1e+04, 0.1, 1e-05)
+        specific_heat_capacity_t = daeVariableType("specific_heat_capacity_t", (J ** (1))*(K ** (-1))*(kg ** (-1)), 1e-10, 1e+10, 1000., 1e-05)
+
+        mass_flowrate_per_length_t = daeVariableType("mass_flowrate_per_length_t", (kg ** (1)) * (m ** (-1)) * (s ** (-1)), 1e-10, 1e+04, 0.1, 1e-05)
+        heat_per_length_t = daeVariableType("heat_per_length_t", (J ** (1)) * (m ** (-1)) * (s ** (-1)), 1e-10, 1e+04, 0.1, 1e-05)
+
 
         # Defining Variables
 
@@ -59,17 +65,25 @@ class Pipe(daeModel):
         self.kappa = daeVariable("kappa", thermal_conductivity_t, self, "Fluid thermal conductivity", [self.x, ])
         self.mu = daeVariable("mu", dynamic_viscosity_t, self, "Viscosity of the liquid", [self.x, ])
         self.rho = daeVariable("rho", density_t, self, "Density of the liquid", [self.x, ])
+        self.cp = daeVariable("h", specific_heat_capacity_t, self, "Heat capacity of the liquid", [self.x, ])
+
+        self.Qout = daeVariable("Qout", heat_per_length_t, self, "Mass loss per length", [self.x, ])
+        self.Mout = daeVariable("Mout", mass_flowrate_per_length_t, self, "Heat loss per length", [self.x, ])
+
 
     def DeclareEquations(self):
 
         daeModel.DeclareEquations(self)
 
         # Definitions that simplify the notation
-        dP_dx = lambda x: d(self.P(x), self.x, eCFDM)
         dk_dx = lambda x: d(self.k(x), self.x, eCFDM)
         dT_dx = lambda x: d(self.T(x), self.x, eCFDM)
 
         # Equations: Fluid Property
+
+        eq = self.CreateEquation("cp", "Heat capacity calculation")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.cp(x) - self.fluid.cp(self.PR*self.P(x),self.T(x),self.fluid.fraction)
 
         eq = self.CreateEquation("rho", "Density calculation")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
@@ -99,15 +113,150 @@ class Pipe(daeModel):
         eq = self.CreateEquation("MomBal", "Momentum balance")
         x = eq.DistributeOnDomain(self.x, eOpenClosed)
         hL = 0.5 * self.fD(x) * self.v(x) ** 2 / ( self.D() * self.g )
-        DeltaP = self.g * self.rho(x) * self.L() * hL / self.PR
-        eq.Residual = dP_dx(x) + DeltaP
+        DeltaP = self.g * self.rho(x) * hL
+        # eq.Residual = dt(A*self.rho(x)*self.v(x)) + \
+        #               d(self.k(x)*self.v(x), self.x, eCFDM)/self.L()  + \
+        #               self.PR*d(A*self.P(x), self.x, eCFDM)/self.L() + \
+        #               A*DeltaP + \
+        #               A*self.rho(x)*self.g*Sin(self.tetha(x))
+        eq.Residual = dt(A*self.rho(x)*self.v(x)) + \
+                      self.PR*d(A*self.P(x), self.x, eCFDM)/self.L() + \
+                      self.k(x) * d(self.v(x), self.x, eCFDM) / self.L() + \
+                      A*DeltaP + \
+                        A*self.rho(x)*self.g*Sin(self.tetha(x))
 
         eq = self.CreateEquation("MassBal", "Mass balance")
-        # TODO - Include balances
         x = eq.DistributeOnDomain(self.x, eOpenClosed)
-        eq.Residual = dk_dx(x)
+        eq.Residual = dt(A*self.rho(x)) + dk_dx(x) / self.L() + self.Mout(x)
 
         eq = self.CreateEquation("HeatBal", "Heat balance")
-        # TODO - Include balances
         x = eq.DistributeOnDomain(self.x, eOpenClosed)
-        eq.Residual = dT_dx(x)
+        #eq.Residual = dt(A * self.rho(x) * self.cp(x) * self.T(x)) + d(self.k(x) * self.cp(x) * self.T(x), self.x,
+        #                                                               eCFDM) / self.L()
+        eq.Residual = dt(A * self.rho(x) * self.cp(x) * self.T(x)) + self.k(x) * self.cp(x) * d( self.T(x), self.x, eCFDM) / self.L() + self.Qout(x)
+
+
+        # TODO Other equations
+
+        # Para calcular Nusselt
+        r"""Calculates the Nussel dimensionless number using Petukhov correlation modified by Gnielinski.
+            See Incropera 4th Edition [8.63]
+            :param \**kwargs:
+                See below
+            :Keyword Arguments:
+                * *Re* (``float``) --
+                    Reynolds number
+                * *Pr* (``float``) --
+                    Prandtl number
+                * *f* (``float``) --
+                    Fanning friction factor
+            """
+        #NuD = (f / 2.) * (Re - 1000.) * Pr / (1. + 12.7 * np.sqrt(f / 2.) * (np.power(Pr, 2 / 3) - 1.))
+
+        # Para Calcular o Prandtl
+        r"""Calculates the Prandtl dimensionless number
+           :param \**kwargs:
+               See below
+           :Keyword Arguments:
+               * *cp* (``float``) --
+                   Heat capacity in kJ/kg
+               * *mu* (``float``) --
+                   Dynamic viscosity in Pa.s
+               * *k* (``float``) --
+                   Thermal conductivity in W/(m.K)
+           """
+        # Pr = 1000 * cp * mu / k
+
+        # Para Calcular h_coefficient_internal_flow
+        r"""Calculates heat transfer coefficient for internal flow
+            in circular pipes in W/(m²K).
+           :param \**kwargs:
+               See below
+           :Keyword Arguments:
+               * *k* (``float``) --
+                   Thermal conductivity in W/(m.K)
+               * *D* (``float``) --
+                   Pipe external diameter
+               * *Nu* (``float``) --
+                   Reynolds number
+               """
+        # h = NuD * k / D
+
+        # Para calcular
+        # def h_coefficient_external_condensation_unique_tube(**kwargs):
+        #     r"""Calculates heat transfer coefficient for external condensation
+        #      around an unique circular pipes in W/(m²K). See Incropera 4th Edition [10.41]
+        #     :param \**kwargs:
+        #         See below
+        #     :Keyword Arguments:
+        #         * *Ts* (``float``) --
+        #             External pipe surface temperature in K
+        #         * *Tsat* (``float``) --
+        #             External saturated vapor temperature in K
+        #         * *rho_l* (``float``) --
+        #             Saturated liquid density in kg/m³
+        #         * *mu_l* (``float``) --
+        #             Liquid dynamic viscosity in Pa.s
+        #         * *kl* (``float``) --
+        #             Liquid thermal conductivity in W/(m.K)
+        #         * *rho_v* (``float``) --
+        #             Saturated vapor density in kg/m³
+        #         * *hvap* (``float``) --
+        #             Vaporization heat in J/kg
+        #         * *D* (``float``) --
+        #             Pipe external diameter
+        #     """
+        #
+        #     g = const.physical_constants['standard acceleration of gravity'][0]
+        #
+        #     Ts = kwargs.pop('Ts')
+        #     Tsat = kwargs.pop('Tsat')
+        #     rho_l = kwargs.pop('rho_l')
+        #     mu_l = kwargs.pop('mu_l')
+        #     kl = kwargs.pop('kl')
+        #     rho_v = kwargs.pop('rho_v')
+        #     hvap = kwargs.pop('hvap')
+        #     D = kwargs.pop('D')
+        #
+        #     num = (g * rho_l * (rho_l - rho_v) * kl ** 3. * hvap)
+        #     den = mu_l * abs(Tsat - Ts) * D
+        #     hd1 = 0.729 * (num / den) ** 0.25
+        #
+        #     # hd2 = 100 + Ts*0
+        #     # hd = (hd1<hd2)*hd2 + (hd1>=hd2)*hd1
+        #
+        #     return hd1
+        #
+        # def h_coefficient_external_condensation(**kwargs):
+        #     r"""Calculates heat transfer coefficient for external condensation
+        #      around circular aligned pipes in W/(m²K). See Incropera 4th Edition [10.41]
+        #     :param \**kwargs:
+        #         See below
+        #     :Keyword Arguments:
+        #         * *Ts* (``float``) --
+        #             External pipe surface temperature in K
+        #         * *Tsat* (``float``) --
+        #             External saturated vapor temperature in K
+        #         * *rho_l* (``float``) --
+        #             Saturated liquid density in kg/m³
+        #         * *mu_l* (``float``) --
+        #             Liquid dynamic viscosity in Pa.s
+        #         * *kl* (``float``) --
+        #             Liquid thermal conductivity in W/(m.K)
+        #         * *rho_v* (``float``) --
+        #             Saturated vapor density in kg/m³
+        #         * *hvap* (``float``) --
+        #             Vaporization heat in J/kg
+        #         * *D* (``float``) --
+        #             Pipe external diameter
+        #         * *N* (``float``) --
+        #             Number of pipes over the actual pipe, including it
+        #     """
+        #
+        #     N = kwargs.pop('N')
+        #
+        #     hd1 = h_coefficient_external_condensation_unique_tube(**kwargs)
+        #
+        #     f = N ** 0.75 - (N - 1) ** 0.75
+        #
+        # return f * hd1

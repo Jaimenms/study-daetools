@@ -12,12 +12,13 @@ sys.path.insert(0,parentdir)
 from daetools.pyDAE import *
 from daetools_reporters import setupDataReporters
 
+from pyUnits import m, kg, s, K, Pa, mol, J, W, rad
+
 
 class Pipe(daeModel):
 
     def __init__(self, Name, Parent=None, Description=""):
 
-        from pyUnits import m, kg, s, K, Pa, mol, J, W
 
         daeModel.__init__(self, Name, Parent, Description)
 
@@ -172,24 +173,20 @@ class sim_test2(daeSimulation):
         #self.m.x.CreateArray(2)
         self.m.pipe['pipe_0'].x.CreateStructuredGrid(10, 0.0, 1.0)
         # Setting Parameter values
-        self.m.pipe['pipe_0'].g.SetValue( 9.81 * m/ s**2 )
         self.m.pipe['pipe_0'].D.SetValue( 4.026*0.0254 * m )
         self.m.pipe['pipe_0'].L.SetValue( 1.0 * m )
         self.m.pipe['pipe_0'].rho.SetValue( 1000 * kg / m**3 )
         self.m.pipe['pipe_0'].mu.SetValue( 0.001 * Pa * s )
         self.m.pipe['pipe_0'].ep.SetValue( 0.0018*0.0254 * m )
-        self.m.pipe['pipe_0'].PR.SetValue( 100000. * Pa )
 
         #self.m.x.CreateArray(2)
         self.m.pipe['pipe_1'].x.CreateStructuredGrid(10, 0.0, 1.0)
         # Setting Parameter values
-        self.m.pipe['pipe_1'].g.SetValue( 9.81 * m/ s**2 )
         self.m.pipe['pipe_1'].D.SetValue( 4.026*0.0254 * m )
         self.m.pipe['pipe_1'].L.SetValue( 1.0 * m )
         self.m.pipe['pipe_1'].rho.SetValue( 1000 * kg / m**3 )
         self.m.pipe['pipe_1'].mu.SetValue( 0.001 * Pa * s )
         self.m.pipe['pipe_1'].ep.SetValue( 0.0018*0.0254 * m )
-        self.m.pipe['pipe_1'].PR.SetValue( 100000. * Pa )
 
     def SetUpVariables(self):
 
@@ -230,24 +227,20 @@ class sim_test3(daeSimulation):
         #self.m.x.CreateArray(2)
         self.m.pipe[0].x.CreateStructuredGrid(10, 0.0, 1.0)
         # Setting Parameter values
-        self.m.pipe[0].g.SetValue( 9.81 * m/ s**2 )
         self.m.pipe[0].D.SetValue( 4.026*0.0254 * m )
         self.m.pipe[0].L.SetValue( 1.0 * m )
         self.m.pipe[0].rho.SetValue( 1000 * kg / m**3 )
         self.m.pipe[0].mu.SetValue( 0.001 * Pa * s )
         self.m.pipe[0].ep.SetValue( 0.0018*0.0254 * m )
-        self.m.pipe[0].PR.SetValue( 100000. * Pa )
 
         #self.m.x.CreateArray(2)
         self.m.pipe[1].x.CreateStructuredGrid(10, 0.0, 1.0)
         # Setting Parameter values
-        self.m.pipe[1].g.SetValue( 9.81 * m/ s**2 )
         self.m.pipe[1].D.SetValue( 4.026*0.0254 * m )
         self.m.pipe[1].L.SetValue( 1.0 * m )
         self.m.pipe[1].rho.SetValue( 1000 * kg / m**3 )
         self.m.pipe[1].mu.SetValue( 0.001 * Pa * s )
         self.m.pipe[1].ep.SetValue( 0.0018*0.0254 * m )
-        self.m.pipe[1].PR.SetValue( 100000. * Pa )
 
     def SetUpVariables(self):
 
@@ -290,13 +283,13 @@ class PipeWithTPP(daeModel):
         # Defining Parameters
 
         self.T = daeParameter("T", K, self, "Temperature")
-        self.g = daeParameter("g", m / (s **2), self, "Gravity acceleration")
+        self.g = Constant(9.81 * m / (s **2))
         self.D = daeParameter("D", m, self, "Diameter")
         self.L = daeParameter("L", m, self, "Length")
         #self.rho = daeParameter("rho", kg / (m ** 3), self, "Density")
         #self.mu = daeParameter("mu", Pa * s, self, "Dynamic viscosity")
         self.ep = daeParameter("epsilon", m, self, "Roughness")
-        self.PR = daeParameter("PR", Pa, self, "Pressure reference")
+        self.PR = Constant( 100000. * Pa)
 
         # Defining Variables
         self.P = daeVariable("P", no_t, self, "Pressure")
@@ -347,15 +340,15 @@ class PipeWithTPP(daeModel):
         # Equations
         eq = self.CreateEquation("rho", "Density calculation")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        eq.Residual = self.rho(x) - self.tpp.rho(self.PR()*self.P(x),self.T(),[1.0,])
+        eq.Residual = self.rho(x) - self.tpp.rho(self.PR*self.P(x),self.T(),[1.0,])
 
         eq = self.CreateEquation("mu", "Viscosity calculation.")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        eq.Residual = self.mu(x) - self.tpp.mu(self.PR()*self.P(x),self.T(),[1.0,])
+        eq.Residual = self.mu(x) - self.tpp.mu(self.PR*self.P(x),self.T(),[1.0,])
 
         eq = self.CreateEquation("kappa", "Thermal conductivity calculation.")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        eq.Residual = self.kappa(x) - self.tpp.kappa(self.PR()*self.P(x),self.T(),[1.0,])
+        eq.Residual = self.kappa(x) - self.tpp.kappa(self.PR*self.P(x),self.T(),[1.0,])
 
         eq = self.CreateEquation("v", "Velocity")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
@@ -369,8 +362,8 @@ class PipeWithTPP(daeModel):
 
         eq = self.CreateEquation("MomBal", "Momentum balance")
         x = eq.DistributeOnDomain(self.x, eOpenClosed)
-        hL = 0.5 * self.fD(x) * self.v(x) ** 2 / ( self.D() * self.g() )
-        DeltaP = self.g() * self.rho(x) * self.L() * hL / self.PR()
+        hL = 0.5 * self.fD(x) * self.v(x) ** 2 / ( self.D() * self.g )
+        DeltaP = self.g * self.rho(x) * self.L() * hL / self.PR
         eq.Residual = dP_dx(x) + DeltaP
 
 
@@ -395,13 +388,11 @@ class sim_test1b(daeSimulation):
 
         # Setting Parameter values
         self.m.T.SetValue( 300 * K)
-        self.m.g.SetValue( 9.81 * m/ s**2 )
         self.m.D.SetValue( 4.026*0.0254 * m )
         self.m.L.SetValue( 1.0 * m )
         #self.m.rho.SetValue( 1000 * kg / m**3 )
         #self.m.mu.SetValue( 0.001 * Pa * s )
         self.m.ep.SetValue( 0.0018*0.0254 * m )
-        self.m.PR.SetValue( 100000. * Pa )
 
 
     def SetUpVariables(self):
@@ -445,7 +436,7 @@ def test_test1b():
 
     data = main(simulation = sim_test1b())
 
-    assert round( data['v']['Values'][0][0] - 2.36909, 4) == 0.0
+    assert round( data['v']['Values'][0][0] - 2.389286, 4) == 0.0
 
 
 def test_test2():
@@ -489,10 +480,18 @@ class sim_test4(daeSimulation):
         self.m.L.SetValue( 1.0 * m )
         self.m.ep.SetValue( 0.0018*0.0254 * m )
 
+        Nx = self.m.x.NumberOfPoints
+
+        for i in range(Nx):
+            self.m.tetha.SetValue(i, 0. * rad)
+
     def SetUpVariables(self):
 
         P0 = 1.0
         P1 = 0.995
+
+        self.InitialConditionMode = eQuasiSteadyState
+
 
         # Setting Variable Initial Guesses
         self.m.fD.SetInitialGuesses(0.03 * unit())
@@ -509,6 +508,8 @@ class sim_test4(daeSimulation):
 
         for i in range(Nx):
             self.m.P.SetInitialGuess(i, P0 + i / 10 * (P0-P1) * unit())
+            self.m.Mout.AssignValue(i, 0. * kg / s / m)
+            self.m.Qout.AssignValue(i, 0. * J / s / m)
 
     def Run(self):
         # A custom operating procedure, if needed.
@@ -523,7 +524,7 @@ def test_test4():
 
     print(data)
 
-    assert round( data['v']['Values'][0] - 1.64589, 4) == 0.0
+    assert round( data['v']['Values'][0][0] - 2.38928, 4) == 0.0
 
 
 
@@ -535,12 +536,15 @@ def main(simulation = None):
 
     cfg = daeGetConfig()
     cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
-    cfg.SetString('daetools.core.printInfo', 'true')
-    cfg.SetString('daetools.IDAS.printInfo', 'true')
+    #cfg.SetString('daetools.core.printInfo', 'true')
+    #cfg.SetString('daetools.IDAS.printInfo', 'true')
 
     simulation.m.SetReportingOn(True)
+    simulation.ReportingInterval = 10
+    simulation.TimeHorizon = 10
 
     datareporter = setupDataReporters(simulation)
+
 
     simulation.Initialize(solver, datareporter, log)
 
