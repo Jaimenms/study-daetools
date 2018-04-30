@@ -32,40 +32,55 @@ class Pipe(daeModel):
 
         # Defining Constants
 
+        self.pi = Constant( 3.14 )
         self.g = Constant(9.81 * m / s ** 2)
         self.PR = Constant(1e5 * Pa)
 
         # Defining Parameters
 
+        self.Text = daeParameter("T_ext", K, self, "External temperature")
         self.tetha = daeParameter("tetha", rad, self, "Angle", [self.x, ])
-        self.D = daeParameter("D", m, self, "Diameter")
+        self.D = daeParameter("D", m, self, "External pipe diameter")
+        self.Dout = daeParameter("D_out", m, self, "External pipe diameter")
         self.L = daeParameter("L", m, self, "Length")
         self.ep = daeParameter("epsilon", m, self, "Roughness")
+        self.kappawall = daeParameter("kappa_wall", (K ** (-1))*(W ** (1))*(m ** (-1)), self, "Wall thermal conductivity")
 
         # Defining Variable Types
 
         dimentionless_pressure_t = daeVariableType("dimentionless_pressure_t", dimless, 0.5, 20.0, 1.0, 1e-06)
         darcy_t = daeVariableType("darcy_t", dimless, 1e-10, 100.0, 0.05, 1e-06)
-        water_temperature_t = daeVariableType("temperature_t", (K ** (1)), 273.0, 373.0, 300.0, 0.01)
-        velocity_t = daeVariableType("velocity_t", (m ** (1)) * (s ** (-1)), 1e-10, 1e+02, 0.1, 1e-05)
+        water_temperature_t = daeVariableType("temperature_t", (K ** (1)), 273.0, 400.0, 300.0, 0.01)
+        velocity_t = daeVariableType("velocity_t", (m ** (1)) * (s ** (-1)), 1e-3, 1e+02, 0.1, 1e-05)
         mass_flowrate_t = daeVariableType("mass_flowrate_t", (kg ** (1)) * (s ** (-1)), 1e-10, 1e+04, 0.1, 1e-05)
         specific_heat_capacity_t = daeVariableType("specific_heat_capacity_t", (J ** (1))*(K ** (-1))*(kg ** (-1)), 1e-10, 1e+10, 1000., 1e-05)
 
         mass_flowrate_per_length_t = daeVariableType("mass_flowrate_per_length_t", (kg ** (1)) * (m ** (-1)) * (s ** (-1)), 1e-10, 1e+04, 0.1, 1e-05)
-        heat_per_length_t = daeVariableType("heat_per_length_t", (J ** (1)) * (m ** (-1)) * (s ** (-1)), 1e-10, 1e+04, 0.1, 1e-05)
-
+        heat_per_length_t = daeVariableType("heat_per_length_t", (J ** (1)) * (m ** (-1)) * (s ** (-1)), -1e-10, 1e+10, 0.1, 1e-05)
 
         # Defining Variables
 
         self.k = daeVariable("k", mass_flowrate_t, self, "Mass flowrate", [self.x, ])
+
         self.T = daeVariable("T", water_temperature_t, self, "Fluid Temperature", [self.x, ])
-        self.P = daeVariable("P", dimentionless_pressure_t, self, "Fluid Pressure", [self.x, ])
-        self.v = daeVariable("v", velocity_t, self, "Fluid Velocity", [self.x, ])
-        self.fD = daeVariable("f_D", darcy_t, self, "Darcy friction factor", [self.x, ])
+        self.Tw1 = daeVariable("Tw_1", water_temperature_t, self, "Internal wall temperature", [self.x, ])
+        self.Tw2 = daeVariable("Tw_2", water_temperature_t, self, "External wall temperature", [self.x, ])
+
         self.kappa = daeVariable("kappa", thermal_conductivity_t, self, "Fluid thermal conductivity", [self.x, ])
         self.mu = daeVariable("mu", dynamic_viscosity_t, self, "Viscosity of the liquid", [self.x, ])
         self.rho = daeVariable("rho", density_t, self, "Density of the liquid", [self.x, ])
         self.cp = daeVariable("h", specific_heat_capacity_t, self, "Heat capacity of the liquid", [self.x, ])
+
+        self.v = daeVariable("v", velocity_t, self, "Fluid Velocity", [self.x, ])
+        self.Re = daeVariable("Re", no_t, self, "Reynolds", [self.x, ])
+        self.fD = daeVariable("f_D", darcy_t, self, "Darcy friction factor", [self.x, ])
+
+        self.P = daeVariable("P", dimentionless_pressure_t, self, "Fluid Pressure", [self.x, ])
+
+        self.prandtl = daeVariable("prandtl", no_t, self, "Prandtl", [self.x, ])
+        self.nusselt = daeVariable("nusselt", no_t, self, "Nusselt", [self.x, ])
+        self.hint = daeVariable("hint", heat_transfer_coefficient_t, self, "hint", [self.x, ])
+        self.hext = daeVariable("hext", heat_transfer_coefficient_t, self, "hext", [self.x, ])
 
         self.Qout = daeVariable("Qout", heat_per_length_t, self, "Mass loss per length", [self.x, ])
         self.Mout = daeVariable("Mout", mass_flowrate_per_length_t, self, "Heat loss per length", [self.x, ])
@@ -108,11 +123,11 @@ class Pipe(daeModel):
         # TODO - Include laminar flow
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
         Re = self.D() * self.v(x) * self.rho(x) / self.mu(x)
-        eq.Residual = 1 / Sqrt(self.fD(x)) + 2. * Log10(self.ep() / 3.7 / self.D() + 2.51 / Re / Sqrt(self.fD(x)))
+        eq.Residual = 1 / Pow(self.fD(x), 0.5) + 2. * Log10(self.ep() / 3.7 / self.D() + 2.51 / Re / Pow(self.fD(x),0.5))
 
         eq = self.CreateEquation("MomBal", "Momentum balance")
         x = eq.DistributeOnDomain(self.x, eOpenClosed)
-        hL = 0.5 * self.fD(x) * self.v(x) ** 2 / ( self.D() * self.g )
+        hL = 0.5 * self.fD(x) * Pow(self.v(x), 2) / ( self.D() * self.g )
         DeltaP = self.g * self.rho(x) * hL
         # eq.Residual = dt(A*self.rho(x)*self.v(x)) + \
         #               d(self.k(x)*self.v(x), self.x, eCFDM)/self.L()  + \
@@ -129,58 +144,56 @@ class Pipe(daeModel):
         x = eq.DistributeOnDomain(self.x, eOpenClosed)
         eq.Residual = dt(A*self.rho(x)) + dk_dx(x) / self.L() + self.Mout(x)
 
-        eq = self.CreateEquation("HeatBal", "Heat balance")
-        x = eq.DistributeOnDomain(self.x, eOpenClosed)
-        #eq.Residual = dt(A * self.rho(x) * self.cp(x) * self.T(x)) + d(self.k(x) * self.cp(x) * self.T(x), self.x,
-        #                                                               eCFDM) / self.L()
-        eq.Residual = dt(A * self.rho(x) * self.cp(x) * self.T(x)) + self.k(x) * self.cp(x) * d( self.T(x), self.x, eCFDM) / self.L() + self.Qout(x)
-
-
         # TODO Other equations
 
-        # Para calcular Nusselt
+        eq = self.CreateEquation("Re", "Re")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.Re(x) - self.D() * self.v(x) * self.rho(x) / self.mu(x)
+
+        eq = self.CreateEquation("Prandtl", "Prandtl")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.prandtl(x) - self.cp(x) * self.mu(x) / self.kappa(x)
+
+        eq = self.CreateEquation("Nusselt", "Nusselt")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.nusselt(x) - 0.027 * Pow(self.Re(x), 4/5) * Pow(self.prandtl(x), 1/3)
+        # eq.Residual = self.nusselt(x) - (self.fD(x) / 8.) * (Re - 1000.) * self.prandtl(x) / (1. + 12.7 * Sqrt(self.fD(x) / 8.) * Pow(self.prandtl(x), 2 / 3) - 1.)
+
+        eq = self.CreateEquation("hint", "hint")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.hint(x) - self.nusselt(x) * self.kappa(x) / self.D()
+
+        eq = self.CreateEquation("HeatBal0", "Heat balance - T")
+        x = eq.DistributeOnDomain(self.x, eOpenClosed)
+        #eq.Residual = dt(A * self.rho(x) * self.cp(x) * self.T(x)) + d(self.k(x) * self.cp(x) * self.T(x), self.x,
+        #                                                              eCFDM) / self.L()
+        eq.Residual = dt(A * self.rho(x) * self.cp(x) * self.T(x)) + self.k(x) * self.cp(x) * d( self.T(x), self.x, eCFDM) / self.L() + self.Qout(x)
+        #eq.Residual = dt(A * self.rho(x) * self.cp(x) * self.T(x)) + self.k(x) * self.cp(x) * d( self.T(x), self.x, eCFDM) / self.L()
+        #eq.Residual = d( self.T(x), self.x, eCFDM)
+
+
+        eq = self.CreateEquation("HeatBal1", "Heat balance - Tw1")
         r"""Calculates the Nussel dimensionless number using Petukhov correlation modified by Gnielinski.
             See Incropera 4th Edition [8.63]
-            :param \**kwargs:
-                See below
-            :Keyword Arguments:
-                * *Re* (``float``) --
-                    Reynolds number
-                * *Pr* (``float``) --
-                    Prandtl number
-                * *f* (``float``) --
-                    Fanning friction factor
             """
-        #NuD = (f / 2.) * (Re - 1000.) * Pr / (1. + 12.7 * np.sqrt(f / 2.) * (np.power(Pr, 2 / 3) - 1.))
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.Qout(x) - 2 * self.pi * self.D() * self.hint(x) * (self.T(x) - self.Tw1(x))
 
-        # Para Calcular o Prandtl
-        r"""Calculates the Prandtl dimensionless number
-           :param \**kwargs:
-               See below
-           :Keyword Arguments:
-               * *cp* (``float``) --
-                   Heat capacity in kJ/kg
-               * *mu* (``float``) --
-                   Dynamic viscosity in Pa.s
-               * *k* (``float``) --
-                   Thermal conductivity in W/(m.K)
-           """
-        # Pr = 1000 * cp * mu / k
+        eq = self.CreateEquation("HeatBal2", "Heat balance - Tw2")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.Qout(x) - 2 * self.pi * self.kappawall() * (self.Tw1(x) - self.Tw2(x))  / Log(self.Dout()/self.D())
 
-        # Para Calcular h_coefficient_internal_flow
-        r"""Calculates heat transfer coefficient for internal flow
-            in circular pipes in W/(m²K).
-           :param \**kwargs:
-               See below
-           :Keyword Arguments:
-               * *k* (``float``) --
-                   Thermal conductivity in W/(m.K)
-               * *D* (``float``) --
-                   Pipe external diameter
-               * *Nu* (``float``) --
-                   Reynolds number
-               """
-        # h = NuD * k / D
+        eq = self.CreateEquation("HeatBal3", "Heat balance - Q")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.Qout(x) - 2 * self.pi * self.Dout() * self.hext(x) * (self.Tw2(x) - self.Text())
+
+        eq = self.CreateEquation("ThermalRes", "Overall Thermal Resistance")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        Rtotal  = 1/(2 * self.pi * self.Dout() * self.hext(x)) + \
+                  1/(2 * self.pi * self.D() * self.hint(x)) + \
+                  Log(self.Dout()/self.D()) / (2 * self.pi * self.kappawall())
+        eq.Residual = self.Qout(x) - (self.T(x) - self.Text()) / Rtotal
+
 
         # Para calcular
         # def h_coefficient_external_condensation_unique_tube(**kwargs):

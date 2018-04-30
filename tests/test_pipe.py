@@ -476,9 +476,12 @@ class sim_test4(daeSimulation):
 
         self.m.x.CreateStructuredGrid(10, 0.0, 1.0)
         # Setting Parameter values
+        self.m.Text.SetValue( 350 * K )
         self.m.D.SetValue( 4.026*0.0254 * m )
+        self.m.Dout.SetValue( 1.1 * 4.026*0.0254 * m )
         self.m.L.SetValue( 1.0 * m )
         self.m.ep.SetValue( 0.0018*0.0254 * m )
+        self.m.kappawall.SetValue( 44.6 * (K ** (-1))*(W ** (1))*(m ** (-1)) )
 
         Nx = self.m.x.NumberOfPoints
 
@@ -507,9 +510,17 @@ class sim_test4(daeSimulation):
         Nx = self.m.x.NumberOfPoints
 
         for i in range(Nx):
+            self.m.T.SetInitialGuess(i, 300 * K)
+            self.m.Tw1.SetInitialGuess(i, 310 * K)
+            self.m.Tw2.SetInitialGuess(i, 320 * K)
             self.m.P.SetInitialGuess(i, P0 + i / 10 * (P0-P1) * unit())
             self.m.Mout.AssignValue(i, 0. * kg / s / m)
-            self.m.Qout.AssignValue(i, 0. * J / s / m)
+            self.m.Qout.SetInitialGuess(i, -100. * J / s / m)
+            self.m.hext.SetInitialGuess(i, 100.0 * (K ** (-1))*(W ** (1))*(m ** (-2)) )
+            # self.m.hint.AssignValue(i, 100.0 * (K ** (-1))*(W ** (1))*(m ** (-2)) )
+            self.m.nusselt.SetInitialGuess(i, 1000.0 * unit() )
+            self.m.Re.SetInitialGuess(i, 100000. * unit())
+            self.m.prandtl.SetInitialGuess(i, 5. * unit())
 
     def Run(self):
         # A custom operating procedure, if needed.
@@ -536,8 +547,8 @@ def main(simulation = None):
 
     cfg = daeGetConfig()
     cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
-    #cfg.SetString('daetools.core.printInfo', 'true')
-    #cfg.SetString('daetools.IDAS.printInfo', 'true')
+    cfg.SetString('daetools.core.printInfo', 'true')
+    cfg.SetString('daetools.IDAS.printInfo', 'true')
 
     simulation.m.SetReportingOn(True)
     simulation.ReportingInterval = 10

@@ -7,6 +7,7 @@ import sys
 import json
 import inspect
 import pprint
+import argparse
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -17,7 +18,7 @@ from daetools_reporters import setupDataReporters
 
 
 # Standard variable types are defined in variable_types.py
-from pyUnits import m, g, kg, s, K, Pa, mol, J, W
+from pyUnits import m, g, kg, s, K, Pa, mol, J, W, rad
 
 def test_coolprop_single_phase():
     """
@@ -162,6 +163,8 @@ def main(simulation = sim_test1()):
     cfg = daeGetConfig()
 
     cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
+    cfg.SetString('daetools.core.printInfo', 'true')
+    cfg.SetString('daetools.IDAS.printInfo', 'true')
 
     log = daeStdOutLog()
     solver = daeIDAS()
@@ -183,4 +186,14 @@ def main(simulation = sim_test1()):
 
 if __name__ == "__main__":
 
-    pprint.pprint(main(), indent = 4)
+    methods = {'test1': sim_test1, 'test4': sim_test4, }
+
+    parser = argparse.ArgumentParser(description='Test pipe.')
+    parser.add_argument('case',type=str,
+                        help='Simulation case')
+
+    args = parser.parse_args()
+
+    data = main(simulation = methods[args.case]())
+
+    pprint.pprint(data, indent = 4)
