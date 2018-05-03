@@ -466,26 +466,40 @@ class sim_test4(daeSimulation):
         import models.pipe as models_pipe
         daeSimulation.__init__(self)
 
-        self.m = models_pipe.Pipe("test4")
+        # self.m = models_pipe.IsothermalPipe("test4")
+        self.m = models_pipe.ConvectionPipe("test4")
         self.m.Description = "Testing the solution for a pipe"
 
         self.report_filename = __file__ + '.json'
 
+        # Defining Fluid
+        self.m.fluid = daeThermoPackage("TPP", self.m, "")
+        self.m.fluid.LoadCoolProp(["Water", ],  # compound IDs in the mixture
+                                [],  # compund CAS numbers (optional)
+                                {'Liquid': eLiquid},  # dictionary {'phaseLabel' : stateOfAggregation}
+                                eMass,  # default basis is eMole (other options are eMass or eUndefinedBasis)
+                                {})  # options dictionary (defaut is empty)
+
+        self.m.fluid.P = 100000.
+        self.m.fluid.T = 300.
+        self.m.fluid.x = [1.0, ]
+
 
     def SetUpParametersAndDomains(self):
 
-        self.m.x.CreateStructuredGrid(10, 0.0, 1.0)
+        self.m.Nx = 11
+
+        self.m.x.CreateStructuredGrid(self.m.Nx-1, 0.0, 1.0)
         # Setting Parameter values
-        self.m.Text.SetValue( 350 * K )
         self.m.D.SetValue( 4.026*0.0254 * m )
-        self.m.Dout.SetValue( 1.1 * 4.026*0.0254 * m )
+        self.m.Dout.SetValue( 1.1*4.026*0.0254 * m )
         self.m.L.SetValue( 1.0 * m )
         self.m.ep.SetValue( 0.0018*0.0254 * m )
-        self.m.kappawall.SetValue( 44.6 * (K ** (-1))*(W ** (1))*(m ** (-1)) )
+        self.m.Text.SetValue( 310. * K )
+        self.m.hext.SetValue( 2.5 * (K ** (-1))*(W ** (1))*(m ** (-2)))
+        self.m.kwall.SetValue( 51.9 * (K ** (-1))*(W ** (1))*(m ** (-1)))
 
-        Nx = self.m.x.NumberOfPoints
-
-        for i in range(Nx):
+        for i in range(self.m.Nx):
             self.m.tetha.SetValue(i, 0. * rad)
 
     def SetUpVariables(self):
@@ -495,32 +509,27 @@ class sim_test4(daeSimulation):
 
         self.InitialConditionMode = eQuasiSteadyState
 
+        mu = self.m.fluid._CalcSinglePhaseScalarProperty("viscosity", self.m.fluid.P, self.m.fluid.T, self.m.fluid.x, "Liquid", eUndefinedBasis)
+        rho = self.m.fluid._CalcSinglePhaseScalarProperty("density", self.m.fluid.P, self.m.fluid.T, self.m.fluid.x, "Liquid", eMass)
+        cp = self.m.fluid._CalcSinglePhaseScalarProperty("heatCapacityCp", self.m.fluid.P, self.m.fluid.T, self.m.fluid.x, "Liquid", eMass)
+        kappa = self.m.fluid._CalcSinglePhaseScalarProperty("thermalConductivity", self.m.fluid.P, self.m.fluid.T, self.m.fluid.x, "Liquid", eUndefinedBasis)
+
+        self.m.rho.AssignValue( rho * kg / m ** 3)
+        self.m.mu.AssignValue( mu * Pa * s)
+        self.m.cp.AssignValue( cp * (J ** (1))*(K ** (-1))*(kg ** (-1)))
+        self.m.kappa.AssignValue( kappa * (K ** (-1))*(W ** (1))*(m ** (-1)))
 
         # Setting Variable Initial Guesses
-        self.m.fD.SetInitialGuesses(0.03 * unit())
-        self.m.v.SetInitialGuesses(2. * m / s)
-        self.m.rho.SetInitialGuesses(1000. * kg / m**3 )
-        self.m.mu.SetInitialGuesses(0.001 * Pa * s )
-        # self.m.k.SetInitialGuesses(10. * kg / s)
         self.m.P.AssignValue(0, P0 * unit())
-        self.m.P.AssignValue(10, P1 * unit())
+        self.m.P.AssignValue(self.m.Nx-1, P1 * unit())
         self.m.T.AssignValue(0, 300. * K)
-        self.m.k.SetInitialGuess(0, 10. * kg / s)
 
-        Nx = self.m.x.NumberOfPoints
-
-        for i in range(Nx):
+        for i in range(self.m.Nx):
+            self.m.fD.SetInitialGuess(i, 0.03 * unit())
+            self.m.k.SetInitialGuess(i, 10. * kg / s)
+            self.m.P.SetInitialGuess(i, P0 + i / (self.m.Nx-1) * (P0-P1) * unit())
             self.m.T.SetInitialGuess(i, 300 * K)
-            self.m.Tw1.SetInitialGuess(i, 310 * K)
-            self.m.Tw2.SetInitialGuess(i, 320 * K)
-            self.m.P.SetInitialGuess(i, P0 + i / 10 * (P0-P1) * unit())
-            self.m.Mout.AssignValue(i, 0. * kg / s / m)
-            self.m.Qout.SetInitialGuess(i, -100. * J / s / m)
-            self.m.hext.SetInitialGuess(i, 100.0 * (K ** (-1))*(W ** (1))*(m ** (-2)) )
-            # self.m.hint.AssignValue(i, 100.0 * (K ** (-1))*(W ** (1))*(m ** (-2)) )
-            self.m.nusselt.SetInitialGuess(i, 1000.0 * unit() )
-            self.m.Re.SetInitialGuess(i, 100000. * unit())
-            self.m.prandtl.SetInitialGuess(i, 5. * unit())
+            self.m.Tw.SetInitialGuess(i, 305 * K)
 
     def Run(self):
         # A custom operating procedure, if needed.
