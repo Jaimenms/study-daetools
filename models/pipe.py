@@ -132,22 +132,29 @@ class Pipe(daeModel):
         Resext = 1 / (2 * self.pi * self.Do() * hext)
         eq.Residual = self.Qout(x) - (self.Tw(x) - self.Text()) / Resext
 
-        eq = self.CreateEquation("Biofilm", "Biofilm Formation")
-        x = eq.DistributeOnDomain(self.x, eClosedClosed)
 
+        self.IF(Time() < Constant(5*s), eventTolerance = 1E-5)
+
+        eq = self.CreateEquation("Biofilm", "Biofilm Formation - OFF")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.mf(x)
+
+        self.ELSE()
+
+        eq = self.CreateEquation("Biofilm", "Biofilm Formation - ON")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
         vast = v / Constant(1 * m / s)
         Tast = self.T(x) / Constant(1 * K)
-
-        Jp = 1.19e-7 - 1.14e-7 * vast
-        b =  1 / (4.26e4  + 3.16e5 * vast)
+        Jp = (1.19e-7 - 1.14e-7 * vast) * Constant( 1 * kg / m **2 / s)
+        b =  1 / (4.26e4  + 3.16e5 * vast) * Constant( 1 / s)
         Jr = b * self.mf(x)
+        # k27_mf = 0.599
+        # sigmoid = 1 * Exp(0.6221 * (Tast - 315.34)) / (1 + Exp(0.6221 * (Tast - 315.34)))
+        # k_mf = 1.624e7 * Tast * Exp(-1000 * 13.609 / 1.987 / Tast) * (1 - sigmoid)
+        eq.Residual = dt(self.mf(x)) - ( Jp - Jr )
+        # eq.Residual = dt(self.mf(x)) - ( Jp * k27_mf / k_mf * Constant(1. * kg * m ** (-2) * s ** (-1) ) - Jr * Constant(1. * s ** (-1) ))
 
-        k27_mf = 0.599
-        sigmoid = 1 * Exp(0.6221 * (Tast - 315.34)) / (1 + Exp(0.6221 * (Tast - 315.34)))
-        k_mf = 1.624e7 * Tast * Exp(-1000 * 13.609 / 1.987 / Tast) * (1 - sigmoid)
-        # eq.Residual = dt(self.mf(x)) - ( Jp * k27_mf / k_mf - Jr )
-        eq.Residual = dt(self.mf(x)) - ( Jp * k27_mf / k_mf * Constant(1. * kg * m ** (-2) * s ** (-1) ) - Jr * Constant(1. * s ** (-1) ))
-
+        self.END_IF()
 
 
 class IsothermalPipe(daeModel):
