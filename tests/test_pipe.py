@@ -467,7 +467,7 @@ class sim_test4(daeSimulation):
         daeSimulation.__init__(self)
 
         # self.m = models_pipe.IsothermalPipe("test4")
-        self.m = models_pipe.ConvectionPipe("test4")
+        self.m = models_pipe.Pipe("test4")
         self.m.Description = "Testing the solution for a pipe"
 
         self.report_filename = __file__ + '.json'
@@ -491,8 +491,8 @@ class sim_test4(daeSimulation):
 
         self.m.x.CreateStructuredGrid(self.m.Nx-1, 0.0, 1.0)
         # Setting Parameter values
-        self.m.D.SetValue( 4.026*0.0254 * m )
-        self.m.Dout.SetValue( 1.1*4.026*0.0254 * m )
+        self.m.Di.SetValue( 4.026*0.0254 * m )
+        self.m.Do.SetValue( 1.1*4.026*0.0254 * m )
         self.m.L.SetValue( 1.0 * m )
         self.m.ep.SetValue( 0.0018*0.0254 * m )
         self.m.Text.SetValue( 310. * K )
@@ -525,6 +525,8 @@ class sim_test4(daeSimulation):
         self.m.T.AssignValue(0, 300. * K)
 
         for i in range(self.m.Nx):
+            #self.m.mf.AssignValue(i, 0.000001 * kg / m **2)
+            self.m.D.SetInitialGuess(i, 4.026 * 0.0254 * m)
             self.m.fD.SetInitialGuess(i, 0.03 * unit())
             self.m.k.SetInitialGuess(i, 10. * kg / s)
             self.m.P.SetInitialGuess(i, P0 + i / (self.m.Nx-1) * (P0-P1) * unit())
