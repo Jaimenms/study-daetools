@@ -493,11 +493,13 @@ class sim_test4(daeSimulation):
         # Setting Parameter values
         self.m.Di.SetValue( 4.026*0.0254 * m )
         self.m.Do.SetValue( 1.1*4.026*0.0254 * m )
-        self.m.L.SetValue( 1.0 * m )
+        self.m.L.SetValue( 5.0 * m )
         self.m.ep.SetValue( 0.0018*0.0254 * m )
         self.m.Text.SetValue( 310. * K )
         self.m.hext.SetValue( 2.5 * (K ** (-1))*(W ** (1))*(m ** (-2)))
         self.m.kwall.SetValue( 51.9 * (K ** (-1))*(W ** (1))*(m ** (-1)))
+        self.m.rhomf.SetValue( 980 * (kg ** (1)) * (m ** (-3)))
+
 
         for i in range(self.m.Nx):
             self.m.tetha.SetValue(i, 0. * rad)
@@ -528,7 +530,7 @@ class sim_test4(daeSimulation):
             #self.m.mf.AssignValue(i, 0.000001 * kg / m **2)
             self.m.D.SetInitialGuess(i, 4.026 * 0.0254 * m)
             self.m.fD.SetInitialGuess(i, 0.03 * unit())
-            self.m.k.SetInitialGuess(i, 10. * kg / s)
+            self.m.k.SetInitialGuess(i, 5. * kg / s)
             self.m.P.SetInitialGuess(i, P0 + i / (self.m.Nx-1) * (P0-P1) * unit())
             self.m.T.SetInitialGuess(i, 300 * K)
             self.m.Tw.SetInitialGuess(i, 305 * K)
@@ -537,6 +539,17 @@ class sim_test4(daeSimulation):
         # A custom operating procedure, if needed.
         # Here we use the default one:
         daeSimulation.Run(self)
+
+        # #self.m.P.ReAssignValue(0, 1.0 * unit())
+        # self.Reinitialize()
+        # self.ReportData(self.CurrentTime)
+        # self.Log.SetProgress(int(100.0 * self.CurrentTime / self.TimeHorizon))
+        # self.Log.Message(
+        #     "OP: Integrating to the time horizon (" + str(self.TimeHorizon) + ") ... ", 0)
+        # time = self.Integrate(eDoNotStopAtDiscontinuity)
+        # self.ReportData(self.CurrentTime)
+        # self.Log.SetProgress(int(100.0 * self.CurrentTime / self.TimeHorizon));
+        # self.Log.Message("OP: Finished", 0)
 
 
 
@@ -558,12 +571,12 @@ def main(simulation = None):
 
     cfg = daeGetConfig()
     cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
-    cfg.SetString('daetools.core.printInfo', 'true')
-    cfg.SetString('daetools.IDAS.printInfo', 'true')
+    #cfg.SetString('daetools.core.printInfo', 'true')
+    #cfg.SetString('daetools.IDAS.printInfo', 'true')
 
     simulation.m.SetReportingOn(True)
-    simulation.ReportingInterval = 10
-    simulation.TimeHorizon = 10
+    simulation.ReportingInterval = 24*3600
+    simulation.TimeHorizon = 20*24*3600
 
     datareporter = setupDataReporters(simulation)
 
@@ -595,3 +608,10 @@ if __name__ == "__main__":
     data = main(simulation = methods[args.case]())
 
     pprint.pprint(data, indent = 4)
+    k0 = data['k']['Values'][0][0]
+    rho0 = data['rho']['Values'][0]
+    D0= data['D']['Values'][0][0]
+    print(D0)
+    A0 = 3.14 * D0 **2 / 4
+    v0 = k0 / (rho0 * A0)
+    print('velocidade', v0)

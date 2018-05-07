@@ -10,7 +10,7 @@ from daetools.pyDAE import *
 from pyUnits import m, kg, s, K, Pa, mol, J, W, rad
 
 
-class Pipe(daeModel):
+class Biofilm(daeModel):
 
     def __init__(self, Name, Parent=None, Description=""):
 
@@ -37,7 +37,7 @@ class Pipe(daeModel):
         self.kwall = daeParameter("k_wall", (K ** (-1))*(J ** (1))*(s ** (-1))*(m ** (-1)), self, "Wall conductivity")
         self.Text = daeParameter("T_ext", K, self, "External Temperature")
         self.hext = daeParameter("h_ext", (K ** (-1))*(J ** (1))*(s ** (-1))*(m ** (-2)), self, "External heat transfer coefficient")
-        self.rhomf = daeParameter("rho_mf",(kg ** (1)) * (m ** (-3)), self, "Density of the biofilm")
+
 
         # Defining Variable Types
 
@@ -79,7 +79,7 @@ class Pipe(daeModel):
 
         eq = self.CreateEquation("D", "Internal flow diameter")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        eq.Residual = self.D(x) - (self.Di() ** 2 - 4 * self.mf(x) * self.Di() / self.rhomf()) ** 0.5
+        eq.Residual = self.D(x) - self.Di()
 
 
         eq = self.CreateEquation("f_D", "Friction Factor")
