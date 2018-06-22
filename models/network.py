@@ -13,6 +13,7 @@ from daetools.pyDAE import *
 from daetools_extended.daemodel_extended import daeModelExtended
 from daetools_extended.tools import get_node_tree, execute_recursive_method
 
+import pandas as pd
 
 class Network(daeModelExtended):
 
@@ -140,4 +141,4 @@ if __name__ == "__main__":
     simulation1, dr1_1, dr2_1 = simulate(data=data)
 
     with pd.option_context('display.max_rows', None, 'display.max_columns', 20):
-       print(dr2_2.data_frame)
+       print(dr2_1.data_frame)

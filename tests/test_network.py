@@ -39,7 +39,9 @@ def test_network_creation():
 
 
 #@pytest.mark.skip(reason="no way of currently testing this")
-@pytest.mark.parametrize("data", get_testdata(case="case_01"))
+#@pytest.mark.parametrize("data", get_testdata(case="case_biofilmed_fixed_external_convection_pipe"))
+@pytest.mark.parametrize("data", get_testdata(case="case_biofilmed_isolated_pipe"))
+#@pytest.mark.parametrize("data", get_testdata(case="case_isolated_pipe"))
 def test_simulation(data):
     """
     Check if the reading node function can collect the correct data
@@ -55,5 +57,8 @@ def test_simulation(data):
     new_data['submodels']['pipe_01']['states']['stnWaterPropertiesSetup'] = 'Variable'
 
     simulation2, dr1_2, dr2_2 = simulate(data=new_data)
+
+    with pd.option_context('display.max_rows', None, 'display.max_columns', 20):
+       print(dr2_2.data_frame)
 
     assert dr2_2.data_frame.loc['pipe_01.P','Values'][0][0] > 990000.

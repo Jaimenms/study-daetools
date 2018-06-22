@@ -20,15 +20,37 @@ class Edge(daeModelExtended):
 
         daeModelExtended.__init__(self, Name, Parent, Description, data=data, node_tree=node_tree)
 
+        # Domains
+        self.define_domains()
 
-    def collect_data(self, data):
-        """
-        Collecting Data (only necessary for baby step tests)
-        :param data:
-        :return:
-        """
+        # Defining Constants
+        self.define_constants()
 
-        self.data = data
+        # Defining Parameters
+        self.define_parameters()
+
+        # Defining Variables
+        self.define_variables()
+
+
+    def define_domains(self):
+
+        pass
+
+
+    def define_constants(self):
+
+        pass
+
+
+    def define_parameters(self):
+
+        pass
+
+
+    def define_variables(self):
+
+        pass
 
 
     def eq_nodal_boundaries(self, name='P', description='pressure', position='from'):

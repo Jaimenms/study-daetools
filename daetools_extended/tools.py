@@ -87,7 +87,8 @@ def execute_recursive_method(obj, method_, subobj_name='submodels'):
     if hasattr(obj, subobj_name):
 
         # Recursivity
-        for _, obj_i in obj.submodels.items():
+        for obj_name, obj_i in obj.submodels.items():
+            print("Setting {0} for {1}".format(  obj_name, method_) )
             execute_recursive_method(obj_i, method_,subobj_name=subobj_name)
 
 
