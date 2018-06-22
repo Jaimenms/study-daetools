@@ -39,7 +39,7 @@ class Biofilm(daeModelExtended):
 
     def eq_biofilm(self):
 
-        eq = self.CreateEquation("Biofilm", "Biofilm Formation - ON")
+        eq = self.CreateEquation("Biofilm", "Biofilm")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
         vast = self.v(x) / Constant(1 * m / s)
         Tast = self.T(x) / Constant(1 * K)

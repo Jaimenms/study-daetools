@@ -36,6 +36,7 @@ class FixedExternalConvectionPipe(FixedExternalConvection, Pipe):
 
         Pipe.DeclareEquations(self)
         FixedExternalConvection.eq_total_he(self)
-        FixedExternalConvection.eq_wall_he(self)
-
+        FixedExternalConvection.eq_calculate_To(self)
+        FixedExternalConvection.eq_calculate_Ti(self)
+        FixedExternalConvection.eq_calculate_hint(self)
 

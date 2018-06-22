@@ -45,6 +45,7 @@ def test_network_creation():
 
 #@pytest.mark.skip(reason="no way of currently testing this")
 @pytest.mark.parametrize("data", get_testdata(case=["case_pipe","case_biofilmed_pipe","case_fixed_external_convection_pipe","case_biofilmed_fixed_external_convection_pipe"]))
+#@pytest.mark.parametrize("data", get_testdata(case="case_biofilmed_fixed_external_convection_pipe"))
 def test_simulation(data):
     """
     Check if the reading node function can collect the correct data

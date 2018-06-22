@@ -44,7 +44,7 @@ class Pipe(Edge):
         Edge.define_parameters(self)
 
         self.tetha = daeParameter("tetha", rad, self, "Angle")
-        self.Di = daeParameter("D_i", m, self, "Inside pipe diameter")
+        self.Di = daeParameter("Di", m, self, "Inside pipe diameter")
         self.L = daeParameter("L", m, self, "Length")
         self.ep = daeParameter("epsilon", m, self, "Roughness")
 
@@ -58,7 +58,6 @@ class Pipe(Edge):
         darcy_t = daeVariableType("darcy_t", dimless, 0.01, 0.5, 0.018, 1e-03)
         water_temperature_t = daeVariableType("temperature_t", (K ** (1)), 273.0, 400.0, 300.0, 0.01)
         mass_flowrate_t = daeVariableType("mass_flowrate_t", (kg ** (1)) * (s ** (-1)), 0.001, 100.0, 5.0, 1e-05)
-        heat_per_length_t = daeVariableType("heat_per_length_t", (J ** (1)) * (m ** (-1)) * (s ** (-1)), -1e+10, 1e+10, 0.1, 1e-05)
 
         velocity_t = daeVariableType("velocity_t", (m ** (1)) * (s ** (-1)), 0.001, 10.0, 1.0, 1e-05)
 
@@ -141,6 +140,7 @@ class Pipe(Edge):
         eq.Residual = self.rho(x) * self.cp(x) * dt(A * self.T(x)) + self.k() * self.cp(x) * d( self.T(x), self.x, eCFDM) / self.L()
 
         print("HEAT BALANCE FROM ISOLATED")
+
 
     def eq_water_properties(self):
 

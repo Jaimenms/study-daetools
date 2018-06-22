@@ -16,10 +16,10 @@ class FixedExternalConvection(daeModelExtended):
 
     def define_parameters(self):
 
-        self.Do = daeParameter("D_o", m, self, "Outside pipe diameter")
-        self.kwall = daeParameter("k_wall", (K ** (-1))*(J ** (1))*(s ** (-1))*(m ** (-1)), self, "Wall conductivity")
-        self.Text = daeParameter("T_ext", K, self, "External Temperature")
-        self.hext = daeParameter("h_ext", (K ** (-1))*(J ** (1))*(s ** (-1))*(m ** (-2)), self, "External heat transfer coefficient")
+        self.Do = daeParameter("Do", m, self, "Outside pipe diameter")
+        self.kwall = daeParameter("kwall", (K ** (-1))*(J ** (1))*(s ** (-1))*(m ** (-1)), self, "Wall conductivity")
+        self.Text = daeParameter("Text", K, self, "External Temperature")
+        self.hext = daeParameter("hext", (K ** (-1))*(J ** (1))*(s ** (-1))*(m ** (-2)), self, "External heat transfer coefficient")
 
 
     def define_variables(self):
@@ -32,7 +32,13 @@ class FixedExternalConvection(daeModelExtended):
         self.Qout = daeVariable("Qout", heat_per_length_t, self, "Mass loss per length", [self.x, ])
 
         # State variables
-        self.Tw = daeVariable("Tw", water_temperature_t, self, "Wall Temperature", [self.x, ])
+        self.To = daeVariable("To", water_temperature_t, self, "Outside Wall Temperature", [self.x, ])
+
+        # State variables
+        self.Ti = daeVariable("Ti", water_temperature_t, self, "Internal Wall Temperature", [self.x, ])
+
+        # State variables
+        self.hint = daeVariable("hint", heat_transfer_coefficient_t, self, "Internal convection coefficient", [self.x, ])
 
 
     def eq_heat_balance(self):
@@ -42,32 +48,47 @@ class FixedExternalConvection(daeModelExtended):
 
         A = 0.25 * 3.14 * self.D(x) ** 2
         eq.Residual = self.rho(x) * self.cp(x) * dt(A * self.T(x)) + self.k() * self.cp(x) * d( self.T(x), self.x, eCFDM) / self.L() + self.Qout(x)
-        print("HEAT BALANCE FROM FIXED CONVECTION")
+
+
+    def eq_calculate_hint(self):
+
+        eq = self.CreateEquation("InternalConvection", "Internal convection - hint")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+
+        # Calculates the Nussel dimensionless number using Petukhov correlation modified by Gnielinski. See Incropera 4th Edition [8.63]
+        prandtl = self.cp(x) * self.mu(x) / self.kappa(x)
+        nusselt = (self.fD(x) / 8.) * (self.Re(x) - 1000.) * prandtl / (
+                1. + 12.7 * Sqrt(self.fD(x) / 8.) * (prandtl ** 2 / 3) - 1.)
+        hint = nusselt * self.kappa(x) / self.D(x)
+
+        eq.Residual = self.hint(x) - hint
 
 
     def eq_total_he(self):
 
         eq = self.CreateEquation("TotalHeat", "Heat balance - Qout")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        prandtl = self.cp(x) * self.mu(x) / self.kappa(x)
-        # nusselt =  0.027 * (Re ** (4/5)) * (prandtl ** (1/3))
-        nusselt = (self.fD(x) / 8.) * (self.Re(x) - 1000.) * prandtl / (
-                    1. + 12.7 * Sqrt(self.fD(x) / 8.) * (prandtl ** 2 / 3) - 1.)
-        hint = nusselt * self.kappa(x) / self.D(x)
-        hext = self.hext()
-        Resext = 1 / (2 * self.pi * self.Di() * hext)
-        Resint = 1 / (2 * self.pi * self.D(x) * hint)
+
+        Resext = 1 / (2 * self.pi * self.Di() * self.hext())
+        Resint = 1 / (2 * self.pi * self.D(x) * self.hint(x))
         Reswall = Log(self.Do() / self.Di()) / (2 * self.pi * self.kwall())
         eq.Residual = self.Qout(x) - (self.T(x) - self.Text()) / (Resint + Reswall + Resext)
 
 
-    def eq_wall_he(self):
+    def eq_calculate_To(self):
 
         eq = self.CreateEquation("WallHeat", "Heat balance - wall")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        hext = self.hext()
-        Resext = 1 / (2 * self.pi * self.Do() * hext)
-        eq.Residual = self.Qout(x) - (self.Tw(x) - self.Text()) / Resext
+        Resext = 1 / (2 * self.pi * self.Do() * self.hext())
+        eq.Residual = self.Qout(x) - (self.To(x) - self.Text()) / Resext
+
+
+    def eq_calculate_Ti(self):
+
+        eq = self.CreateEquation("WallHeat", "Heat balance - wall")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        Reswall = Log(self.Do() / self.Di()) / (2 * self.pi * self.kwall())
+        eq.Residual = self.Qout(x) - (self.Ti(x) - self.To(x)) / Reswall
 
 
     def DeclareEquations(self):
@@ -75,4 +96,6 @@ class FixedExternalConvection(daeModelExtended):
 
         self.eq_heat_balance()
         self.eq_total_he()
-        self.eq_wall_he()
+        self.eq_calculate_To()
+        self.eq_calculate_Ti()
+        self.eq_calculate_hint()
