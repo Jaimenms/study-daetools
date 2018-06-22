@@ -1,205 +1,143 @@
+__doc__ = """
+This is the network model. A network is digraph composed by two entities: nodes and edges. An edge is an interconnection
+between two nodes. An node is an interconnection between various edges and can be used as an inlet or an outlet of mass.
+A node can be an equipment like a pressure vessel, a tank, a CSTR reator or any other equipment that can be modeled with
+concentrated various. An edge can be a pipeline, a heat exchanger or a plug flow reator that can be modeled with distri-
+buted variables.
+
+The equations of the network model consist of the mass balance at nodes and pressure equalization at nodes. (obs.: this
+equations could be included in the node model but they are easier coded here)
+"""
+
 from daetools.pyDAE import *
-
-"""
-- system.py
-  - node.py
-  - edge.py
-    - cooling_tower.py
-    - pump.py
-    - pipe.py
-      - fluid.py
-	  - flow.py
-	  - biofilm.py
-	  - wall.py
-	  - environment.py
-	- condenser.py
-	  - flow.py
-	  - biofilm.py
-	  - wall.py
-	  - shell.py 
+from daetools_extended.daemodel_extended import daeModelExtended
+from daetools_extended.tools import get_node_tree, execute_recursive_method
 
 
-heat transfer:
-
-o---)---)---) env
-T0  T1  T2  T3  Tenv
-
-res = q - f0(T0,T1)
-res = q - f1(T1,T2)
-res = q - f2(T2,T3)
-res = q - f3(T3,Tenv)
-
-
-Variables: T1, T2, T3, q
-Parameter: Tenv
-Fixed variable: T0
-
-"""
-
-from pyUnits import m, kg, s, K, Pa, mol, J, W
-
-from models.pipe import Pipe
-from models.condenser import Condenser
-
-network_data = dict()
-network_data.nodes = {
-    'node-A': {
-        'id': 0,
-        'P': 1.0,
-    },
-    'node-B': {
-        'id': 1,
-        'w', 0.0,
-    },
-    'node-C': {
-        'id': 2,
-        'w', 0.0
-    },
-    'node-D': {
-        'id': 3,
-        'P', 0.995
-    }
-}
-
-network_data.edges = {
-    'pipe-01': {
-        'from': 'node-A',
-        'to': 'node-B',
-        'module': 'pipe',
-        'class': 'Pipe',
-    },
-    'condenser': {
-        'from': 'node-B',
-        'to': 'node-C',
-        'module': 'condenser',
-        'class': 'Condenser',
-    },
-    'pipe-02': {
-        'from': 'node-C',
-        'to': 'node-D',
-        'module': 'pipe',
-        'class': 'Pipe',
-    }
-}
-
-
-def calculate_network_interconnection(network_data):
-
-    for node_name, node_data in network_data.nodes.items():
-
-        if 'inlet' not in node_data:
-            node_data['inlet'] = []
-
-        if 'outlet' not in node_data:
-            node_data['outlet'] = []
-
-        for edge_name, edge_data in network_data.edge.items():
-
-            if edge_data['from'] == node_name:
-                node_data['outlet'].append(edge_name)
-
-            if edge_data['to'] == node_name:
-                node_data['inlet'].append(edge_name)
-
-
-class Edges(daeModel):
-
+class Network(daeModelExtended):
 
     def __init__(self, Name, Parent=None, Description="", data={}):
+        """
+        Model for the network
+        :param Name: name of the model
+        :param Parent: parent model
+        :param Description: description of the model
+        :param data: parameters and other required data
+        """
 
-        import importlib
+        # Calculate the node tree
+        node_tree = get_node_tree(Name, data)
 
-        daeModel.__init__(self, Name, Parent, Description)
+        # Instantiate the Extended daeModel Class
+        daeModelExtended.__init__(self, Name, Parent, Description, data=data, node_tree=node_tree)
 
-        # Defining Variables
-        self.Pin = daeVariable("P_in", no_t, self)
-        self.Pin.Description = "Pressure in edge inlet"
-
-        self.Pout = daeVariable("P_out", no_t, self)
-        self.Pout.Description = "Pressure in edge outlet"
-
-        # TODO - Verificar se isso está funcionando
-        module_name = data['module']
-        class_name = data['class']
-        module = importlib.import_module(module_name)
-        class_ = getattr(module, class_name)
-        self[class_name] = class_()
-
-
-class Nodes(daeModel):
-
-    def __init__(self, Name, Parent=None, Description="", data={}):
-
-        daeModel.__init__(self, Name, Parent, Description)
-
-        self.N = daeDomain("N", self, unit(), "Number of nodes")
-
-        # Defining Variables
-        self.P = daeVariable("P", no_t, self)
-        self.P.Description = "Nodal Pressure"
-        self.P.DistributeOnDomain(self.N)
-
-        # Defining Variables
-        self.w = daeVariable("w", mass_flowrate_t, self)
-        self.w.Description = "External mass flowrate"
-        self.w.DistributeOnDomain(self.N)
-
-
-
-class Network(daeModel):
-
-    def __init__(self, Name, Parent=None, Description="", data={}):
-
-        daeModel.__init__(self, Name, Parent, Description)
-
-
-        self.data = calculate_network_interconnection(self.data)
-
-
-        # Reading Edge Models
-        self.edges = {}
-        for edge_name, edge_data in self.data.edges.items():
-            self.edges[edge_name] = Edges(
-                edge_name,
-                Description="Edge {0} model".format(edge_name),
-                data=edge_data,
-            )
-
-        # Reading Node Models
-        self.nodes = Nodes('nodes', Description="Nodes model", data=self.data.nodes)
 
     def DeclareEquations(self):
+        """
+        This Methos is called by the DaeTools. Here is where all the equations are defined
+        :return:
+        """
 
-        daeModel.DeclareEquations(self)
-
-        i = 0
-        for edge_name, edge_data in self.data.edges.items():
-
-            node_name_from = edge_data['from']
-            node_name_to = edge_data['to']
-
-            node_id_from = node_name_from['id']
-            node_id_to = node_name_to['id']
+        # Reading equations
+        daeModelExtended.DeclareEquations(self)
 
 
-            eq = self.CreateEquation("Edge_Pin_{0}_to_Node".format(i))
-            eq.Residual = self.edges[edge_name].Pin() - self.node.P(node_id_from)
+class NetworkSimulation(daeSimulation):
 
-            eq = self.CreateEquation("Edge_Pout_{0}_to_Node".format(i))
-            eq.Residual = self.edges[edge_name].Pout() - self.node.P(node_id_to)
+    def __init__(self, Name, Parent=None, Description="", data={}, set_reporting = True, reporting_interval = 100, time_horizon = 0):
+
+        daeSimulation.__init__(self)
+
+        self.m = Network(Name, Parent=Parent, Description=Description, data=data)
+
+        self.m.SetReportingOn(set_reporting)
+
+        if set_reporting:
+            self.ReportingInterval = 100
+
+        if time_horizon > 0:
+            self.TimeHorizon = time_horizon
 
 
-        for node_name, node_data in self.data.nodes.items():
+    def SetUpVariables(self):
 
-            node_id = node_data['id']
+        self.InitialConditionMode = eQuasiSteadyState
 
-            inlet_edges = node_data['inlet']
-            outlet_edges = node_data['outlet']
+        execute_recursive_method(self.m,'setup_active_states')
+        execute_recursive_method(self.m,'setup_variables')
+        execute_recursive_method(self.m,'setup_initial_guess')
 
-            eq = self.CreateEquation("Node_{0}_Mass_Balance".format(i))
-            eq.Residual = self.node.w(node_id)
-            for inlet_edge in inlet_edges:
-                eq.Residual += self.edges[inlet_edge].kout()
-            for outlet_edge in outlet_edges:
-                eq.Residual += -self.edges[outlet_edge].kin()
 
+    def SetUpParametersAndDomains(self):
+
+        execute_recursive_method(self.m,'setup_domains')
+        execute_recursive_method(self.m,'setup_parameters')
+
+
+def simulate(data={}):
+
+    from daetools.pyDAE.data_reporters import daePandasDataReporter
+
+    cfg = daeGetConfig()
+    #print(cfg)
+    cfg.SetBoolean('daetools.activity.printHeader', False)
+    #cfg.SetBoolean('daetools.core.printInfo', True)
+    #cfg.SetBoolean('daetools.IDAS.printInfo', True)
+    #cfg.SetInteger('daetools.IDAS.MaxNumStepsIC', 500)
+    #cfg.SetInteger('daetools.IDAS.MaxNumJacsIC', 500)
+    #cfg.SetInteger('daetools.IDAS.MaxNumItersIC', 500)
+    #cfg.SetBoolean('daetools.IDAS.LineSearchOffIC', True)
+    cfg.SetString('daetools.core.equations.evaluationMode', 'computeStack_OpenMP')
+    #cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
+
+    # Instantiate
+    simulation = NetworkSimulation("", data=data, set_reporting = True, reporting_interval = 100, time_horizon = 10)
+
+    # Configurate
+    datareporter = daeDelegateDataReporter()
+
+    dr1 = daeDataReporterLocal()
+    dr2 = daePandasDataReporter()
+
+    datareporter.AddDataReporter(dr1)
+    datareporter.AddDataReporter(dr2)
+
+    solver = daeIDAS()
+    solver.RelativeTolerance = 1e-5
+    log = daePythonStdOutLog()
+
+    # Save the model report and the runtime model report
+    # simulation.m.SaveModelReport("test.xml")
+    # simulation.m.SaveRuntimeModelReport("test-rt.xml")
+
+    # Initialize
+    simulation.Initialize(solver, datareporter, log)
+    print("++ Number of variables: {0}".format(simulation.TotalNumberOfVariables))
+    print("++ Number of equations: {0}".format(simulation.NumberOfEquations))
+
+    #out=daeCodeGeneratorAnalyzer()
+    #out.analyzeSimulation(simulation)
+    #pprint(out.runtimeInformation)
+
+    # Solve at time = 0
+    simulation.SolveInitial()
+
+    # Run
+    simulation.Run()
+
+    # Clean up
+    simulation.Finalize()
+
+    return (simulation, dr1, dr2)
+
+
+if __name__ == "__main__":
+
+    import examples.network_examples as ex
+
+    data = ex.case_01()
+
+    simulation1, dr1_1, dr2_1 = simulate(data=data)
+
+    with pd.option_context('display.max_rows', None, 'display.max_columns', 20):
+       print(dr2_2.data_frame)

@@ -1,1 +1,11 @@
-
+numpy
+scipy
+matplotlib
+pyqt5
+lxml
+pandas
+h5py
+openpyxl
+#mayavi
+pytest
+iapws == 1.3

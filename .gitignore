@@ -3,4 +3,5 @@ __pycache__
 .idea
 .pytest_cache
 daetools-1.8.0*/
-examples/
+.ipynb_checkpoints/*
+.venv/

@@ -1,6 +1,6 @@
 import os
 from time import localtime, strftime
-from daetools.pyDAE.data_reporters import daeDelegateDataReporter, daeJSONFileDataReporter
+from daetools.pyDAE.data_reporters import daeDelegateDataReporter, daeJSONFileDataReporter, daePandasDataReporter
 
 def setupDataReporters(simulation):
 
@@ -16,5 +16,17 @@ def setupDataReporters(simulation):
 
     print('%s (%s): %s' % (
     dr.__class__.__name__, dr.ConnectString, 'connected' if dr.IsConnected() else 'NOT connected'))
+
+    return datareporter
+
+
+def setupPandaDataReporters(simulation):
+
+    datareporter = daeDelegateDataReporter()
+
+    dr = daePandasDataReporter()
+
+    datareporter.AddDataReporter(dr)
+
 
     return datareporter
