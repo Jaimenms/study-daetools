@@ -45,20 +45,13 @@ class Pipe(Edge):
 
         self.tetha = daeParameter("tetha", rad, self, "Angle")
         self.Di = daeParameter("D_i", m, self, "Inside pipe diameter")
-        self.Do = daeParameter("D_o", m, self, "Outside pipe diameter")
         self.L = daeParameter("L", m, self, "Length")
         self.ep = daeParameter("epsilon", m, self, "Roughness")
-        self.kwall = daeParameter("k_wall", (K ** (-1))*(J ** (1))*(s ** (-1))*(m ** (-1)), self, "Wall conductivity")
-        self.Text = daeParameter("T_ext", K, self, "External Temperature")
-        self.hext = daeParameter("h_ext", (K ** (-1))*(J ** (1))*(s ** (-1))*(m ** (-2)), self, "External heat transfer coefficient")
-        self.rhomf = daeParameter("rho_mf",(kg ** (1)) * (m ** (-3)), self, "Density of the biofilm")
 
 
     def define_variables(self):
 
         Edge.define_variables(self)
-
-        print("DEFINE 1")
 
         # Variable types
         diameter_t = daeVariableType("diameter_t", (m ** (1)), 0.001, 1.0, 0.5, 1e-05)
@@ -74,7 +67,6 @@ class Pipe(Edge):
         self.fD = daeVariable("fD", darcy_t, self, "Darcy friction factor", [self.x, ])
         self.D = daeVariable("D", diameter_t, self, "Internal flow diameter", [self.x, ])
         self.v = daeVariable("v", velocity_t, self, "Internal flow velocity", [self.x, ])
-        self.Qout = daeVariable("Qout", heat_per_length_t, self, "Mass loss per length", [self.x, ])
 
         # Fluid Properties
         self.Re = daeVariable("Re", no_t, self, "Viscosity of the liquid", [self.x, ])
@@ -86,7 +78,6 @@ class Pipe(Edge):
         # State variables
         self.P = daeVariable("P", pressure_t, self, "Fluid Pressure", [self.x, ])
         self.T = daeVariable("T", water_temperature_t, self, "Fluid Temperature", [self.x, ])
-        self.Tw = daeVariable("Tw", water_temperature_t, self, "Wall Temperature", [self.x, ])
 
         # Concentrated State Variables
         self.k = daeVariable("k", mass_flowrate_t, self, "Mass flowrate")
@@ -147,32 +138,9 @@ class Pipe(Edge):
         x = eq.DistributeOnDomain(self.x, eOpenClosed)
 
         A = 0.25 * 3.14 * self.D(x) ** 2
-        eq.Residual = self.rho(x) * self.cp(x) * dt(A * self.T(x)) + self.k() * self.cp(x) * d( self.T(x), self.x, eCFDM) / self.L() + self.Qout(x)
+        eq.Residual = self.rho(x) * self.cp(x) * dt(A * self.T(x)) + self.k() * self.cp(x) * d( self.T(x), self.x, eCFDM) / self.L()
 
-
-    def eq_total_he(self):
-        eq = self.CreateEquation("TotalHeat", "Heat balance - Qout")
-        x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        prandtl = self.cp(x) * self.mu(x) / self.kappa(x)
-        # nusselt =  0.027 * (Re ** (4/5)) * (prandtl ** (1/3))
-        nusselt = (self.fD(x) / 8.) * (self.Re(x) - 1000.) * prandtl / (
-                    1. + 12.7 * Sqrt(self.fD(x) / 8.) * (prandtl ** 2 / 3) - 1.)
-        hint = nusselt * self.kappa(x) / self.D(x)
-        hext = self.hext()
-        Resext = 1 / (2 * self.pi * self.Di() * hext)
-        Resint = 1 / (2 * self.pi * self.D(x) * hint)
-        Reswall = Log(self.Do() / self.Di()) / (2 * self.pi * self.kwall())
-        eq.Residual = self.Qout(x) - (self.T(x) - self.Text()) / (Resint + Reswall + Resext)
-
-
-    def eq_wall_he(self):
-
-        eq = self.CreateEquation("WallHeat", "Heat balance - wall")
-        x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        hext = self.hext()
-        Resext = 1 / (2 * self.pi * self.Do() * hext)
-        eq.Residual = self.Qout(x) - (self.Tw(x) - self.Text()) / Resext
-
+        print("HEAT BALANCE FROM ISOLATED")
 
     def eq_water_properties(self):
 
@@ -229,7 +197,6 @@ class Pipe(Edge):
 
         Edge.DeclareEquations(self)
 
-        print("Reading Pipe Equations")
         self.eq_pressure_boundaries()
         self.eq_temperature_boundaries()
         self.eq_velocity()
@@ -238,7 +205,5 @@ class Pipe(Edge):
         self.eq_friction_factor_auxiliar()
         self.eq_mommentum_balance()
         self.eq_heat_balance()
-        self.eq_total_he()
-        self.eq_wall_he()
         self.eq_Reynolds()
         self.eq_water_properties()
