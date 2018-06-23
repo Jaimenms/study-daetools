@@ -39,4 +39,5 @@ class FixedExternalConvectionPipe(FixedExternalConvection, Pipe):
         FixedExternalConvection.eq_calculate_To(self)
         FixedExternalConvection.eq_calculate_Ti(self)
         FixedExternalConvection.eq_calculate_hint(self)
+        FixedExternalConvectionPipe.eq_calculate_resistance(self)
 

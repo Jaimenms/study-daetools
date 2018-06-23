@@ -27,18 +27,17 @@ class FixedExternalConvection(daeModelExtended):
         # Variable types
         water_temperature_t = daeVariableType("temperature_t", (K ** (1)), 273.0, 400.0, 300.0, 0.01)
         heat_per_length_t = daeVariableType("heat_per_length_t", (J ** (1)) * (m ** (-1)) * (s ** (-1)), -1e+10, 1e+10, 0.1, 1e-05)
+        thermal_resistance_t = daeVariableType("thermal_resistance_t", (K ** (1))*(W ** (-1))*(m ** (1)), -1e-10, 1e+10, 100, 1e-05)
 
-        # Secondary variables
         self.Qout = daeVariable("Qout", heat_per_length_t, self, "Mass loss per length", [self.x, ])
 
-        # State variables
         self.To = daeVariable("To", water_temperature_t, self, "Outside Wall Temperature", [self.x, ])
 
-        # State variables
         self.Ti = daeVariable("Ti", water_temperature_t, self, "Internal Wall Temperature", [self.x, ])
 
-        # State variables
         self.hint = daeVariable("hint", heat_transfer_coefficient_t, self, "Internal convection coefficient", [self.x, ])
+
+        self.Resistance = daeVariable("Resistance", thermal_resistance_t, self, "Overall Thermal Resistance", [self.x, ])
 
 
     def eq_heat_balance(self):
@@ -64,15 +63,23 @@ class FixedExternalConvection(daeModelExtended):
         eq.Residual = self.hint(x) - hint
 
 
+    def eq_calculate_resistance(self):
+
+        eq = self.CreateEquation("TotalHeat", "Heat balance - Qout")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        Resext = 1 / (2 * self.pi * self.Do() * self.hext())
+        Resint = 1 / (2 * self.pi * self.D(x) * self.hint(x))
+        Reswall = Log(self.Do() / self.Di()) / (2 * self.pi * self.kwall())
+        # TODO - Lembrar de colocar o Refilme no caso com Biofilme
+        #Resfilm = Log(self.Di() / self.D()) / (2 * self.pi * self.kappa())
+        eq.Residual = self.Resistance(x) - (Resint + Reswall + Resext)
+
+
     def eq_total_he(self):
 
         eq = self.CreateEquation("TotalHeat", "Heat balance - Qout")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-
-        Resext = 1 / (2 * self.pi * self.Di() * self.hext())
-        Resint = 1 / (2 * self.pi * self.D(x) * self.hint(x))
-        Reswall = Log(self.Do() / self.Di()) / (2 * self.pi * self.kwall())
-        eq.Residual = self.Qout(x) - (self.T(x) - self.Text()) / (Resint + Reswall + Resext)
+        eq.Residual = self.Qout(x) - (self.T(x) - self.Text()) / self.Resistance(x)
 
 
     def eq_calculate_To(self):
@@ -99,3 +106,4 @@ class FixedExternalConvection(daeModelExtended):
         self.eq_calculate_To()
         self.eq_calculate_Ti()
         self.eq_calculate_hint()
+        self.eq_calculate_resistance()
