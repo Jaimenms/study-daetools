@@ -1,4 +1,4 @@
-from iapws.iapws97 import _Region1
+from iapws.iapws97 import _Region1, _TSat_P
 from iapws._iapws import _ThCond, _Viscosity
 import numpy as np
 import inspect
@@ -23,6 +23,23 @@ def simple_model_parameters():
                          [1.45088884e-07, -2.36355370e-16, -4.54320112e-23]]),
     }
 
+    c_dict = {
+ 'conductivity': np.array([[-6.68466623e-01,  5.60495502e-09, -9.47189764e-17],
+       [ 6.96267417e-03, -3.08101787e-11,  5.75613760e-19],
+       [-9.01035342e-06,  4.66554489e-14, -8.77655266e-22]]),
+ 'density': np.array([[ 7.79090743e+02,  2.48303614e-06, -1.72867793e-14],
+       [ 1.73778137e+00, -1.25464465e-08,  1.06919245e-16],
+       [-3.37696769e-03,  1.92123247e-11, -1.69246313e-19]]),
+ 'enthalpy': np.array([[-1.13179941e+06,  2.33827218e-03, -2.06860245e-11],
+       [ 4.11846511e+03, -6.75337539e-06,  1.19007291e-13],
+       [ 9.80972572e-02,  6.76532230e-09, -1.71417931e-16]]),
+ 'heat_capacity': np.array([[ 5.33854120e+03, -4.59622909e-05,  6.92912051e-13],
+       [-7.36540443e+00,  2.56423946e-07, -4.16832999e-15],
+       [ 1.16954320e-02, -3.75497945e-10,  6.31920830e-18]]),
+ 'viscosity': np.array([[ 1.88609725e-02, -2.70404394e-11,  1.05272925e-19],
+       [-1.03228185e-04,  1.60840574e-13, -6.17146995e-22],
+       [ 1.44044684e-07, -2.36804252e-16,  9.04800488e-25]])}
+
     return c_dict
 
 
@@ -40,6 +57,21 @@ def simplified_model(x, y):
             f += c[i][j] * (x ** i) * (y ** j)
 
     return f
+
+
+def saturation_temperature(P):
+
+    P = P*1e-6
+
+    T = _TSat_P(P)
+
+    if T > 623.15:
+
+        return None
+
+    else:
+
+        return T
 
 
 def density(T, P, simplified = False):

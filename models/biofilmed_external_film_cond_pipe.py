@@ -6,21 +6,21 @@ from daetools.pyDAE import *
 from pyUnits import m, kg, s, K, Pa, J, W, rad
 
 try:
-    from models.fixed_external_convection_pipe import FixedExternalConvectionPipe
+    from models.external_film_condensation_pipe     import ExternalFilmCondensationPipe
     from models.biofilm import Biofilm
 except:
-    from .fixed_external_convection_pipe import FixedExternalConvectionPipe
+    from .external_film_condensation_pipe import ExternalFilmCondensationPipe
     from .biofilm import Biofilm
 
 
-class BiofilmedFixedExternalConvectionPipe(Biofilm, FixedExternalConvectionPipe):
+class BiofilmedExternalFilmCondensationPipe(Biofilm, ExternalFilmCondensationPipe):
 
     def __init__(self, Name, Parent=None, Description="", data={}, node_tree={}):
-        FixedExternalConvectionPipe.__init__(self, Name, Parent=Parent, Description=Description, data=data,
+        ExternalFilmCondensationPipe.__init__(self, Name, Parent=Parent, Description=Description, data=data,
                                              node_tree=node_tree)
 
     def define_parameters(self):
-        FixedExternalConvectionPipe.define_parameters(self)
+        ExternalFilmCondensationPipe.define_parameters(self)
         Biofilm.define_parameters(self)
 
 
@@ -52,22 +52,19 @@ class BiofilmedFixedExternalConvectionPipe(Biofilm, FixedExternalConvectionPipe)
 
 
     def define_variables(self):
-
-        FixedExternalConvectionPipe.define_variables(self)
+        ExternalFilmCondensationPipe.define_variables(self)
 
         Biofilm.define_variables(self)
 
 
     def define_parameters(self):
-
-        FixedExternalConvectionPipe.define_parameters(self)
+        ExternalFilmCondensationPipe.define_parameters(self)
 
         Biofilm.define_parameters(self)
 
 
     def DeclareEquations(self):
-
-        FixedExternalConvectionPipe.DeclareEquations(self)
+        ExternalFilmCondensationPipe.DeclareEquations(self)
 
         self.eq_biofilm()
         self.eq_biofilm_temperature()

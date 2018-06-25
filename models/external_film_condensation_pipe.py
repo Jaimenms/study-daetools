@@ -8,13 +8,13 @@ from pyUnits import m, kg, s, K, Pa, J, W, rad
 
 try:
     from models.pipe import Pipe
-    from models.fixed_external_convection import FixedExternalConvection
+    from models.external_film_condensation import ExternalFilmCondensation
 except:
     from .pipe import Pipe
-    from .fixed_external_convection import FixedExternalConvection
+    from .external_film_condensation import ExternalFilmCondensation
 
 
-class FixedExternalConvectionPipe(FixedExternalConvection, Pipe):
+class ExternalFilmCondensationPipe(ExternalFilmCondensation, Pipe):
 
     def __init__(self, Name, Parent=None, Description="", data={}, node_tree={}):
         Pipe.__init__(self, Name, Parent=Parent, Description=Description, data=data, node_tree=node_tree)
@@ -23,21 +23,22 @@ class FixedExternalConvectionPipe(FixedExternalConvection, Pipe):
     def define_parameters(self):
 
         Pipe.define_parameters(self)
-        FixedExternalConvection.define_parameters(self)
+        ExternalFilmCondensation.define_parameters(self)
 
 
     def define_variables(self):
 
         Pipe.define_variables(self)
-        FixedExternalConvection.define_variables(self)
+        ExternalFilmCondensation.define_variables(self)
 
 
     def DeclareEquations(self):
 
         Pipe.DeclareEquations(self)
-        FixedExternalConvection.eq_total_he(self)
-        FixedExternalConvection.eq_calculate_To(self)
-        FixedExternalConvection.eq_calculate_Ti(self)
-        FixedExternalConvection.eq_calculate_hint(self)
-        FixedExternalConvection.eq_calculate_resistance(self)
+        ExternalFilmCondensation.eq_total_he(self)
+        ExternalFilmCondensation.eq_calculate_To(self)
+        ExternalFilmCondensation.eq_calculate_Ti(self)
+        ExternalFilmCondensation.eq_calculate_hint(self)
+        ExternalFilmCondensation.eq_calculate_hext(self)
+        ExternalFilmCondensation.eq_calculate_resistance(self)
 

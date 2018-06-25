@@ -33,19 +33,15 @@ def get_testdata(case = "all"):
     return testdata
 
 
-def test_network_creation():
-    """
-    This first test is just to check if the basic infrastructure is up
-    """
-
-    net = Network("Creation_test")
-
-    assert True
-
-
 #@pytest.mark.skip(reason="no way of currently testing this")
-@pytest.mark.parametrize("data", get_testdata(case=["case_pipe","case_biofilmed_pipe","case_fixed_external_convection_pipe","case_biofilmed_fixed_external_convection_pipe"]))
+#@pytest.mark.parametrize("data", get_testdata(case=["case_pipe","case_biofilmed_pipe","case_fixed_external_convection_pipe","case_biofilmed_fixed_external_convection_pipe"]))
+#@pytest.mark.parametrize("data", get_testdata(case="case_biofilmed_pipe"))
+#@pytest.mark.parametrize("data", get_testdata(case="case_biofilmed_external_film_cond_pipe"))
 #@pytest.mark.parametrize("data", get_testdata(case="case_biofilmed_fixed_external_convection_pipe"))
+#@pytest.mark.parametrize("data", get_testdata(case="case_external_film_condensation_pipe"))
+#@pytest.mark.parametrize("data", get_testdata(case="case_fixed_external_convection_pipe"))
+#@pytest.mark.parametrize("data", get_testdata(case="case_pipe"))
+@pytest.mark.parametrize("data", get_testdata(case="all"))
 def test_simulation(data):
     """
     Check if the reading node function can collect the correct data
@@ -64,5 +60,7 @@ def test_simulation(data):
 
     with pd.option_context('display.max_rows', None, 'display.max_columns', 20):
        print(dr2_2.data_frame)
+
+    print(dr2_2.data_frame.loc['pipe_01.P','Values'][0])
 
     assert dr2_2.data_frame.loc['pipe_01.P','Values'][0][0] > 990000.

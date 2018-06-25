@@ -20,36 +20,45 @@ class Biofilm(daeModelExtended):
 
         # Variable types
         mass_biofilm_t = daeVariableType("mass_biofilm_t", (kg ** (1)) * (m ** (-2)), 1e-10, 1e+04, 0.1, 1e-05)
-        self.mf = daeVariable("m_f", mass_biofilm_t, self, "Mass of Biofilm", [self.x, ])
+        self.mf = daeVariable("mf", mass_biofilm_t, self, "Mass of Biofilm", [self.x, ])
+        self.Tbf = daeVariable("Tbf", temperature_t, self, "Temperature of Biofilm", [self.x, ])
 
 
     def define_parameters(self):
 
-        self.rhomf = daeParameter("rho_mf",(kg ** (1)) * (m ** (-3)), self, "Density of the biofilm")
+        self.lagt = Constant(10 * s)
 
-        pass
-
-
-    def eq_internal_diameter(self):
-
-        eq = self.CreateEquation("D", "D_internal_flow_diameter")
-        x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        eq.Residual = self.D(x) - (self.Di() ** 2 - 4 * self.mf(x) * self.Di() / self.rhomf()) ** 0.5
+        self.rhomf = daeParameter("rhomf",(kg ** (1)) * (m ** (-3)), self, "Density of the biofilm")
+        self.mfi = daeParameter("mfi", (kg ** (1)) * (m ** (-2)), self, "Initial biofilm density")
 
 
     def eq_biofilm(self):
 
-        eq = self.CreateEquation("Biofilm", "Biofilm")
+        self.IF(Time() < self.lagt, eventTolerance=1E-5)
+
+        eq = self.CreateEquation("BiofilmOFF", "Biofilm - OFF")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.mf(x) - self.mfi()
+
+        self.ELSE()
+
+        eq = self.CreateEquation("BiofilmON", "Biofilm - ON")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
         vast = self.v(x) / Constant(1 * m / s)
-        Tast = self.T(x) / Constant(1 * K)
+
+
+        Tast = self.Tbf(x) / Constant(1 * K) # In case we consider temperature of constact with water
+        #Tast = 0.5 * (self.Tbf(x) + self.Ti(x)) / Constant(1 * K) # In case we consider the mean temperature
+
         Jp = (1.19e-7 - 1.14e-7 * vast) / (1.+Exp(20*((vast - 1.0)))) * Constant( 1 * kg / m **2 / s)
         b =  1 / (4.26e4  + 3.16e5 * vast) * Constant( 1 / s)
         k27_mf = 0.599
         sigmoid = 1 * Exp(0.6221 * (Tast - 315.34)) / (1 + Exp(0.6221 * (Tast - 315.34)))
         k_mf = 1.624e7 * Tast * Exp(-1000 * 13.609 / 1.987 / Tast) * (1 - sigmoid)
-        #eq.Residual = dt(self.mf(x)) - ( Jp - b * self.mf(x) )
         eq.Residual = dt(self.mf(x)) - ( Jp * k27_mf / k_mf - b * self.mf(x) )
+
+        self.END_IF()
+
 
 
     def DeclareEquations(self):

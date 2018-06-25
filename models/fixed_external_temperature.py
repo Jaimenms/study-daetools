@@ -8,7 +8,7 @@ from daetools_extended.daemodel_extended import daeModelExtended
 from pyUnits import m, kg, s, K, Pa, J, W, rad
 
 
-class FixedExternalConvection(daeModelExtended):
+class FixedExternalTemperature(daeModelExtended):
 
     def __init__(self, Name, Parent=None, Description="", data={}, node_tree={}):
 
@@ -19,7 +19,6 @@ class FixedExternalConvection(daeModelExtended):
         self.Do = daeParameter("Do", m, self, "Outside pipe diameter")
         self.kwall = daeParameter("kwall", (K ** (-1))*(J ** (1))*(s ** (-1))*(m ** (-1)), self, "Wall conductivity")
         self.Text = daeParameter("Text", K, self, "External Temperature")
-        self.hext = daeParameter("hext", (K ** (-1))*(J ** (1))*(s ** (-1))*(m ** (-2)), self, "External heat transfer coefficient")
 
 
     def define_variables(self):
@@ -61,39 +60,40 @@ class FixedExternalConvection(daeModelExtended):
         hint = nusselt * self.kappa(x) / self.D(x)
 
         eq.Residual = self.hint(x) - hint
+        #eq.Residual = self.hint(x) - 1398.8091902015963 * Constant(1 * (K ** (-1))*(W ** (1))*(m ** (-2)))
 
 
     def eq_calculate_resistance(self):
 
         eq = self.CreateEquation("TotalHeat", "Heat balance - Qout")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        Resext = 1 / (2 * self.pi * self.Do() * self.hext())
         Resint = 1 / (2 * self.pi * self.D(x) * self.hint(x))
         Reswall = Log(self.Do() / self.Di()) / (2 * self.pi * self.kwall())
         # TODO - Lembrar de colocar o Refilme no caso com Biofilme
         #Resfilm = Log(self.Di() / self.D()) / (2 * self.pi * self.kappa())
-        eq.Residual = self.Resistance(x) - (Resint + Reswall + Resext)
+        eq.Residual = self.Resistance(x) - (Resint + Reswall)
 
 
     def eq_total_he(self):
 
         eq = self.CreateEquation("TotalHeat", "Heat balance - Qout")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        eq.Residual = self.Qout(x) * self.Resistance(x) - (self.T(x) - self.Text())
+        eq.Residual = self.Qout(x)*self.Resistance(x) - (self.T(x) - self.Text())
 
 
     def eq_calculate_To(self):
 
         eq = self.CreateEquation("WallHeat", "Heat balance - wall")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        eq.Residual = self.Qout(x) - (self.To(x) - self.Text()) * (2 * self.pi * self.Do() * self.hext())
+        eq.Residual = self.To(x) - self.Text()
 
 
     def eq_calculate_Ti(self):
 
         eq = self.CreateEquation("WallHeat", "Heat balance - wall")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        eq.Residual = self.Qout(x) *  Log(self.Do() / self.Di()) - (self.Ti(x) - self.To(x)) * (2 * self.pi * self.kwall())
+        Reswall = Log(self.Do() / self.Di()) / (2 * self.pi * self.kwall())
+        eq.Residual = self.Qout(x) - (self.Ti(x) - self.To(x)) / Reswall
 
 
     def DeclareEquations(self):

@@ -21,6 +21,20 @@ class BiofilmedPipe(Biofilm, Pipe):
         Pipe.__init__(self, Name, Parent=Parent, Description=Description, data=data, node_tree=node_tree)
 
 
+    def eq_internal_diameter(self):
+
+        eq = self.CreateEquation("D", "D_internal_flow_diameter")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.D(x) - (self.Di() ** 2 - 4 * self.mf(x) * self.Di() / self.rhomf()) ** 0.5
+
+    def eq_biofilm_temperature(self):
+
+        eq = self.CreateEquation("Tbf", "Biofilm Temperature")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        # eq.Residual = self.Tbf(x) - 0.5 * (self.T(x) + self.Ti(x))
+        #eq.Residual = self.Tbf(x) - 0.5 * (self.T(x) + self.Ti(x))
+        eq.Residual = self.T(x) - self.Tbf(x)
+
     def define_parameters(self):
         Pipe.define_parameters(self)
         Biofilm.define_parameters(self)
@@ -38,5 +52,7 @@ class BiofilmedPipe(Biofilm, Pipe):
 
     def DeclareEquations(self):
         Pipe.DeclareEquations(self)
-        Biofilm.eq_biofilm(self)
+
+        self.eq_biofilm()
+        self.eq_biofilm_temperature()
 

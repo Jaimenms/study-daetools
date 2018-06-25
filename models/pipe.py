@@ -58,6 +58,7 @@ class Pipe(Edge):
         darcy_t = daeVariableType("darcy_t", dimless, 0.01, 0.5, 0.018, 1e-03)
         water_temperature_t = daeVariableType("temperature_t", (K ** (1)), 273.0, 400.0, 300.0, 0.01)
         mass_flowrate_t = daeVariableType("mass_flowrate_t", (kg ** (1)) * (s ** (-1)), 0.001, 100.0, 5.0, 1e-05)
+        deltap_t = daeVariableType("deltap_t", Pa / m, -1e6, 1e6, 2000, 1e-05)
 
         velocity_t = daeVariableType("velocity_t", (m ** (1)) * (s ** (-1)), 0.001, 10.0, 1.0, 1e-05)
 
@@ -66,6 +67,7 @@ class Pipe(Edge):
         self.fD = daeVariable("fD", darcy_t, self, "Darcy friction factor", [self.x, ])
         self.D = daeVariable("D", diameter_t, self, "Internal flow diameter", [self.x, ])
         self.v = daeVariable("v", velocity_t, self, "Internal flow velocity", [self.x, ])
+        self.dp = daeVariable("dp", deltap_t, self, "Delta Pressure", [self.x, ])
 
         # Fluid Properties
         self.Re = daeVariable("Re", no_t, self, "Viscosity of the liquid", [self.x, ])
@@ -118,6 +120,16 @@ class Pipe(Edge):
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
         eq.Residual = self.k() * self.cp(x) * self.T(x) - self.H(x)
 
+    def eq_delta_pressure(self):
+
+        eq = self.CreateEquation("DeltaPressure", "Delta Pressure")
+        x = eq.DistributeOnDomain(self.x,eClosedClosed)
+
+        hL = 0.5 * self.fD(x) * Abs(self.v(x)) * self.v(x) / ( self.D(x) * self.g )
+        DeltaP = self.g * self.rho(x) * hL
+
+        eq.Residual = self.dp(x) - DeltaP
+
 
     def eq_mommentum_balance(self):
 
@@ -138,8 +150,6 @@ class Pipe(Edge):
 
         A = 0.25 * 3.14 * self.D(x) ** 2
         eq.Residual = self.rho(x) * self.cp(x) * dt(A * self.T(x)) + self.k() * self.cp(x) * d( self.T(x), self.x, eCFDM) / self.L()
-
-        print("HEAT BALANCE FROM ISOLATED")
 
 
     def eq_water_properties(self):
@@ -207,3 +217,4 @@ class Pipe(Edge):
         self.eq_heat_balance()
         self.eq_Reynolds()
         self.eq_water_properties()
+        self.eq_delta_pressure()

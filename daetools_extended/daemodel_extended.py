@@ -9,6 +9,7 @@ data dictionary. The models can assume two different kinds:
 # TODO : Improve documentation
 
 from daetools.pyDAE import *
+from pyUnits import m, kg, s, K, Pa, J, W, rad
 
 import importlib
 import numpy as np
@@ -185,6 +186,15 @@ class daeModelExtended(daeModel):
                 else:
                     for i in range(n):
                         getattr(self, name).AssignValue(i, value)
+
+        if 'initial_conditions' in self.data:
+            for name, value in self.data['initial_conditions'].items():
+                n = getattr(self, name).NumberOfPoints
+                if n == 1:
+                    getattr(self, name).SetInitialCondition(value)
+                else:
+                    for i in range(n):
+                        getattr(self, name).SetInitialCondition(i, value)
 
 
     def setup_parameters(self):
