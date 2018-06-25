@@ -53,32 +53,13 @@ class Edge(daeModelExtended):
         pass
 
 
-    def eq_nodal_boundaries(self, name='P', description='pressure', position='from'):
+    def eq_nodal_boundaries(self, edge_variable='Plb', node_variable='P', position='from'):
 
         nodename = self.get_node(position)
         if nodename:
-            if position == 'from':
-                i = 0
-            else:
-                i = getattr(self, name).NumberOfPoints - 1
-            # Instantiate equation PCB1
-            eq = self.CreateEquation("BC_{0}_{1}_{2}_{3}".format(name, description, position, nodename))
-            eq.Residual = getattr(self, name)(i) - getattr(self.Parent.submodels[nodename],name)()
-            print("+ edge BC_{0}_{1}_{2}_{3}".format(name, description, position, nodename))
-
-
-    def eq_generic_boundaries(self, name='P', description='pressure', position='bc-ini', unit=(Pa)):
-
-        if position in self.data:
-            for namei, value in self.data[position].items():
-                if namei == name:
-                    if position == 'bc-ini':
-                        i = 0
-                    else:
-                        i = getattr(self, name).NumberOfPoints - 1
-                    eq = self.CreateEquation("BC_{0}_{1}_{2}".format(name,description,i))
-                    eq.Residual = getattr(self, name)(i) - Constant(value * unit)
-                    print("+ edge " + position)
+            eq = self.CreateEquation("BC_{0}_{1}_{2}".format(edge_variable, node_variable, nodename))
+            eq.Residual = getattr(self, edge_variable)() - getattr(self.Parent.submodels[nodename],node_variable)()
+            print("+ edge BC_{0}_{1}_{2}".format(edge_variable, node_variable, nodename))
 
 
     def eq_pressure_boundaries(self):
@@ -87,10 +68,8 @@ class Edge(daeModelExtended):
         :return:
         """
 
-        self.eq_generic_boundaries(name='P', description='pressure', position='bc-ini', unit=(Pa))
-        self.eq_generic_boundaries(name='P', description='pressure', position='bc-fini', unit=(Pa))
-        self.eq_nodal_boundaries(name='P', description='pressure', position='from')
-        self.eq_nodal_boundaries(name='P', description='pressure', position='to')
+        self.eq_nodal_boundaries(edge_variable='Plb', node_variable='P', position='from')
+        self.eq_nodal_boundaries(edge_variable='Pub', node_variable='P', position='to')
 
 
     def eq_temperature_boundaries(self):
@@ -99,9 +78,8 @@ class Edge(daeModelExtended):
         :return:
         """
 
-        self.eq_generic_boundaries(name='T', description='temperature', position='bc-ini', unit=(K))
-        self.eq_generic_boundaries(name='T', description='temperature', position='bc-fini', unit=(K))
-        self.eq_nodal_boundaries(name='T', description='temperature', position='from')
+        self.eq_nodal_boundaries(edge_variable='Tlb', node_variable='T', position='from')
+        #self.eq_nodal_boundaries(edge_variable='Tub', node_variable='T', position='to')
 
 
     def DeclareEquations(self):

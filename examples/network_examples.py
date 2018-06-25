@@ -81,6 +81,8 @@ def case_pipe():
                     'tetha': 0.0,
                     'L': 100.0,
                     'ep': 0.0018*0.0254,
+                    'Klb': 0.2,
+                    'Kub': 0.2, 'Npipes': 1.0,
                 },
                 'specifications':{
 
@@ -184,6 +186,8 @@ def case_fixed_external_convection_pipe():
                     'kwall': 51.9,
                     'Text': 273 + 60.,
                     'hext' : 6873,
+                    'Klb': 0.2,
+                    'Kub': 0.2, 'Npipes': 1.0,
                 },
                 'specifications':{
 
@@ -291,6 +295,8 @@ def case_fixed_external_temperature_pipe():
                     'ep': 0.0018*0.0254,
                     'kwall': 51.9,
                     'Text': 273 + 60.,
+                    'Klb': 0.2,
+                    'Kub': 0.2, 'Npipes': 1.0,
                 },
                 'specifications':{
 
@@ -409,8 +415,10 @@ def case_external_film_condensation_pipe():
                     'Tsat': Tsat,
                     'Psat': Psat,
                     'fNtub': Ntub ** 0.75 - (Ntub - 1) ** 0.75,
+                    'Klb': 0.2,
+                    'Kub': 0.2, 'Npipes': 1.0,
 
-    },
+                },
                 'specifications':{
 
                 },
@@ -520,6 +528,8 @@ def case_biofilmed_fixed_external_convection_pipe():
                     'hext': 6873,
                     'rhomf': 980.,
                     'mfi': 1e-9,
+                    'Klb': 0.2,
+                    'Kub': 0.2, 'Npipes': 1.0,
 
                 },
                 'specifications': {
@@ -629,6 +639,8 @@ def case_biofilmed_pipe():
                     'ep': 0.0018 * 0.0254,
                     'rhomf': 980.,
                     'mfi': 1e-9,
+                    'Klb': 0.2,
+                    'Kub': 0.2, 'Npipes': 1.0,
 
                 },
                 'specifications': {
@@ -747,8 +759,10 @@ def case_biofilmed_external_film_cond_pipe():
                     'fNtub': Ntub ** 0.75 - (Ntub - 1) ** 0.75,
                     'rhomf': 980.,
                     'mfi': 1e-9,
+                    'Klb': 0.2,
+                    'Kub': 0.2, 'Npipes': 1.0,
 
-    },
+                },
                 'specifications':{
 
                 },

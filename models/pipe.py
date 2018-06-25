@@ -47,6 +47,9 @@ class Pipe(Edge):
         self.Di = daeParameter("Di", m, self, "Inside pipe diameter")
         self.L = daeParameter("L", m, self, "Length")
         self.ep = daeParameter("epsilon", m, self, "Roughness")
+        self.Kub = daeParameter("Kub", unit(), self, "Upper bound concentrated accident coefficient")
+        self.Klb = daeParameter("Klb", unit(), self, "Lower bound concentrated accident coefficient")
+        self.Npipes = daeParameter("Npipes", unit(), self, "Number of pipes")
 
 
     def define_variables(self):
@@ -77,8 +80,12 @@ class Pipe(Edge):
         self.kappa = daeVariable("kappa", thermal_conductivity_t, self, "Thermal Conductivity of the liquid", [self.x, ])
 
         # State variables
+        self.Pub = daeVariable("Pub", pressure_t, self, "Upper Bound Pressure")
+        self.Plb = daeVariable("Plb", pressure_t, self, "Lower Bound Pressure")
         self.P = daeVariable("P", pressure_t, self, "Fluid Pressure", [self.x, ])
         self.T = daeVariable("T", water_temperature_t, self, "Fluid Temperature", [self.x, ])
+        self.Tub = daeVariable("Tub", water_temperature_t, self, "Upper Bound Fluid Temperature")
+        self.Tlb = daeVariable("Tlb", water_temperature_t, self, "Lower Bound Fluid Temperature")
 
         # Concentrated State Variables
         self.k = daeVariable("k", mass_flowrate_t, self, "Mass flowrate")
@@ -120,6 +127,7 @@ class Pipe(Edge):
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
         eq.Residual = self.k() * self.cp(x) * self.T(x) - self.H(x)
 
+
     def eq_delta_pressure(self):
 
         eq = self.CreateEquation("DeltaPressure", "Delta Pressure")
@@ -127,8 +135,37 @@ class Pipe(Edge):
 
         hL = 0.5 * self.fD(x) * Abs(self.v(x)) * self.v(x) / ( self.D(x) * self.g )
         DeltaP = self.g * self.rho(x) * hL
-
         eq.Residual = self.dp(x) - DeltaP
+
+
+    def eq_lowerbound_pressure(self):
+
+        eq = self.CreateEquation("LowerBoundPressure", "Lower Bound Pressure")
+        x = eq.DistributeOnDomain(self.x, eLowerBound)
+        DeltaPlb = 0.5 * self.Klb() * self.rho(x) * self.v(x) ** 2
+        eq.Residual = self.P(x) + DeltaPlb - self.Plb()
+
+
+    def eq_upperbound_pressure(self):
+
+        eq = self.CreateEquation("UpperBoundPressure", "Upper Bound Pressure")
+        x = eq.DistributeOnDomain(self.x, eUpperBound)
+        DeltaPlub = 0.5 * self.Kub() * self.rho(x) * self.v(x) ** 2
+        eq.Residual = self.P(x) - DeltaPlub - self.Pub()
+
+
+    def eq_lowerbound_temperature(self):
+
+        eq = self.CreateEquation("LowerBoundPressure", "Lower Bound Pressure")
+        x = eq.DistributeOnDomain(self.x, eLowerBound)
+        eq.Residual = self.T(x) - self.Tlb()
+
+
+    def eq_upperbound_temperature(self):
+
+        eq = self.CreateEquation("UpperBoundPressure", "Upper Bound Pressure")
+        x = eq.DistributeOnDomain(self.x, eUpperBound)
+        eq.Residual = self.T(x) - self.Tub()
 
 
     def eq_mommentum_balance(self):
@@ -218,3 +255,7 @@ class Pipe(Edge):
         self.eq_Reynolds()
         self.eq_water_properties()
         self.eq_delta_pressure()
+        self.eq_upperbound_pressure()
+        self.eq_lowerbound_pressure()
+        self.eq_upperbound_temperature()
+        self.eq_lowerbound_temperature()
