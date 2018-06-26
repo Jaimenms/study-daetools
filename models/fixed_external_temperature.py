@@ -67,7 +67,7 @@ class FixedExternalTemperature(daeModelExtended):
 
         eq = self.CreateEquation("TotalHeat", "Heat balance - Qout")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        Resint = 1 / (2 * self.pi * self.D(x) * self.hint(x))
+        Resint = 1 / (self.pi * self.D(x) * self.hint(x))
         Reswall = Log(self.Do() / self.Di()) / (2 * self.pi * self.kwall())
         # TODO - Lembrar de colocar o Refilme no caso com Biofilme
         #Resfilm = Log(self.Di() / self.D()) / (2 * self.pi * self.kappa())

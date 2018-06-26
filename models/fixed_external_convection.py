@@ -67,8 +67,8 @@ class FixedExternalConvection(daeModelExtended):
 
         eq = self.CreateEquation("TotalHeat", "Heat balance - Qout")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        Resext = 1 / (2 * self.pi * self.Do() * self.hext())
-        Resint = 1 / (2 * self.pi * self.D(x) * self.hint(x))
+        Resext = 1 / (self.pi * self.Do() * self.hext())
+        Resint = 1 / (self.pi * self.D(x) * self.hint(x))
         Reswall = Log(self.Do() / self.Di()) / (2 * self.pi * self.kwall())
         # TODO - Lembrar de colocar o Refilme no caso com Biofilme
         #Resfilm = Log(self.Di() / self.D()) / (2 * self.pi * self.kappa())
@@ -86,7 +86,7 @@ class FixedExternalConvection(daeModelExtended):
 
         eq = self.CreateEquation("WallHeat", "Heat balance - wall")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        eq.Residual = self.Qout(x) - (self.To(x) - self.Text()) * (2 * self.pi * self.Do() * self.hext())
+        eq.Residual = self.Qout(x) - (self.To(x) - self.Text()) * (self.pi * self.Do() * self.hext())
 
 
     def eq_calculate_Ti(self):

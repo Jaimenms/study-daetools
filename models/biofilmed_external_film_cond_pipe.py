@@ -35,8 +35,8 @@ class BiofilmedExternalFilmCondensationPipe(Biofilm, ExternalFilmCondensationPip
 
         eq = self.CreateEquation("TotalHeat", "Heat balance - Qout")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        Resext = 1 / (2 * self.pi * self.Do() * self.hext())
-        Resint = 1 / (2 * self.pi * self.D(x) * self.hint(x))
+        Resext = 1 / (self.pi * self.Do() * self.hext())
+        Resint = 1 / (self.pi * self.D(x) * self.hint(x))
         Reswall = Log(self.Do() / self.Di()) / (2 * self.pi * self.kwall())
         Resfilm = Log(self.Di() / self.D()) / (2 * self.pi * self.kappa()) # Melhorar ajustando T para kappa
         eq.Residual = self.Resistance(x) - (Resint + Reswall + Resext + Resfilm)

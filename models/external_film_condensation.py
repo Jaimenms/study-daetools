@@ -69,7 +69,7 @@ class ExternalFilmCondensation(daeModelExtended):
         # Calculates the Nussel dimensionless number using Petukhov correlation modified by Gnielinski. See Incropera 4th Edition [8.63]
         prandtl = self.cp(x) * self.mu(x) / self.kappa(x)
         nusselt = (self.fD(x) / 8.) * (self.Re(x) - 1000.) * prandtl / (
-                1. + 12.7 * Sqrt(self.fD(x) / 8.) * (prandtl ** 2 / 3) - 1.)
+                1. + 12.7 * Sqrt(self.fD(x) / 8.) * (prandtl ** (2 / 3)) - 1.)
         hint = nusselt * self.kappa(x) / self.D(x)
 
         eq.Residual = self.hint(x) - hint
@@ -99,8 +99,8 @@ class ExternalFilmCondensation(daeModelExtended):
 
         eq = self.CreateEquation("TotalHeat", "Heat balance - Qout")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        Resext = 1 / (2 * self.pi * self.Do() * self.hext(x))
-        Resint = 1 / (2 * self.pi * self.D(x) * self.hint(x))
+        Resext = 1 / (self.pi * self.Do() * self.hext(x))
+        Resint = 1 / (self.pi * self.D(x) * self.hint(x))
         Reswall = Log(self.Do() / self.Di()) / (2 * self.pi * self.kwall())
         # TODO - Lembrar de colocar o Refilme no caso com Biofilme
         #Resfilm = Log(self.Di() / self.D()) / (2 * self.pi * self.kappa())
@@ -118,7 +118,7 @@ class ExternalFilmCondensation(daeModelExtended):
 
         eq = self.CreateEquation("WallHeat1", "Heat balance - wall")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        eq.Residual = self.Qout(x) / (2 * self.pi * self.Do() * self.hext(x)) - (self.To(x) - self.Tsat())
+        eq.Residual = self.Qout(x) / (self.pi * self.Do() * self.hext(x)) - (self.To(x) - self.Tsat())
 
 
     def eq_calculate_Ti(self):
