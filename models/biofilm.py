@@ -19,14 +19,14 @@ class Biofilm(daeModelExtended):
     def define_variables(self):
 
         # Variable types
-        mass_biofilm_t = daeVariableType("mass_biofilm_t", (kg ** (1)) * (m ** (-2)), 1e-10, 1e+04, 0.1, 1e-05)
+        mass_biofilm_t = daeVariableType("mass_biofilm_t", (kg ** (1)) * (m ** (-2)), 1e-10, 1e+04, 1e-06, 1e-07)
         self.mf = daeVariable("mf", mass_biofilm_t, self, "Mass of Biofilm", [self.x, ])
         self.Tbf = daeVariable("Tbf", temperature_t, self, "Temperature of Biofilm", [self.x, ])
 
 
     def define_parameters(self):
 
-        self.lagt = Constant(10 * s)
+        self.lagt = Constant(3600*24 * s)
 
         self.rhomf = daeParameter("rhomf",(kg ** (1)) * (m ** (-3)), self, "Density of the biofilm")
         self.mfi = daeParameter("mfi", (kg ** (1)) * (m ** (-2)), self, "Initial biofilm density")

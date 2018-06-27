@@ -7,6 +7,8 @@ from daetools_extended.daemodel_extended import daeModelExtended
 
 from pyUnits import m, kg, s, K, Pa, J, W, rad
 
+from water_properties import density, viscosity, conductivity, heat_capacity
+
 
 class FixedExternalTemperature(daeModelExtended):
 
@@ -26,7 +28,11 @@ class FixedExternalTemperature(daeModelExtended):
         # Variable types
         water_temperature_t = daeVariableType("temperature_t", (K ** (1)), 273.0, 400.0, 300.0, 0.01)
         heat_per_length_t = daeVariableType("heat_per_length_t", (J ** (1)) * (m ** (-1)) * (s ** (-1)), -1e+10, 1e+10, 0.1, 1e-05)
-        thermal_resistance_t = daeVariableType("thermal_resistance_t", (K ** (1))*(W ** (-1))*(m ** (1)), -1e-10, 1e+10, 100, 1e-05)
+        thermal_resistance_t = daeVariableType("thermal_resistance_t", (K ** (1)) * (W ** (-1)) * (m ** (1)), 1e-6,
+                                               100., 1e-6, 1e-05)
+        heat_transfer_coefficient_t = daeVariableType("heat_transfer_coefficient_t",
+                                                      (K ** (-1)) * (W ** (1)) * (m ** (-2)), 0.01,
+                                                      1000000, 10000, 1e-01)
 
         self.Qout = daeVariable("Qout", heat_per_length_t, self, "Mass loss per length", [self.x, ])
 
@@ -54,13 +60,20 @@ class FixedExternalTemperature(daeModelExtended):
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
 
         # Calculates the Nussel dimensionless number using Petukhov correlation modified by Gnielinski. See Incropera 4th Edition [8.63]
-        prandtl = self.cp(x) * self.mu(x) / self.kappa(x)
+
+        Tm = 0.5 * self.T(x) + 0.5 * self.Ti(x)
+
+        rho = density( Tm / Constant(1 * K), self.P(x) / Constant(1 * Pa), simplified = True)
+        mu = viscosity( Tm / Constant(1 * K) , self.P(x) / Constant(1 * Pa), simplified = True)
+        kappa = conductivity( Tm / Constant(1 * K), self.P(x) / Constant(1 * Pa), simplified = True)
+        cp = heat_capacity( Tm / Constant(1 * K), self.P(x) / Constant(1 * Pa), simplified = True)
+
+        prandtl = cp * mu / kappa
         nusselt = (self.fD(x) / 8.) * (self.Re(x) - 1000.) * prandtl / (
-                1. + 12.7 * Sqrt(self.fD(x) / 8.) * (prandtl ** 2 / 3) - 1.)
-        hint = nusselt * self.kappa(x) / self.D(x)
+                1. + 12.7 * Sqrt(self.fD(x) / 8.) * (prandtl ** (2 / 3)) - 1.)
+        hint = nusselt * kappa * Constant(1 * (K ** (-1))*(W ** (1))*(m ** (-1))) / self.D(x)
 
         eq.Residual = self.hint(x) - hint
-        #eq.Residual = self.hint(x) - 1398.8091902015963 * Constant(1 * (K ** (-1))*(W ** (1))*(m ** (-2)))
 
 
     def eq_calculate_resistance(self):

@@ -13,7 +13,7 @@ except:
     from .biofilm import Biofilm
 
 
-class BiofilmedExternalFilmCondensationPipe(Biofilm, ExternalFilmCondensationPipe):
+class BiofilmedExternalFilmCondPipe(Biofilm, ExternalFilmCondensationPipe):
 
     def __init__(self, Name, Parent=None, Description="", data={}, node_tree={}):
         ExternalFilmCondensationPipe.__init__(self, Name, Parent=Parent, Description=Description, data=data,
@@ -30,7 +30,6 @@ class BiofilmedExternalFilmCondensationPipe(Biofilm, ExternalFilmCondensationPip
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
         eq.Residual = self.D(x) - (self.Di() ** 2 - 4 * self.mf(x) * self.Di() / self.rhomf()) ** 0.5
 
-
     def eq_calculate_resistance(self):
 
         eq = self.CreateEquation("TotalHeat", "Heat balance - Qout")
@@ -46,9 +45,7 @@ class BiofilmedExternalFilmCondensationPipe(Biofilm, ExternalFilmCondensationPip
 
         eq = self.CreateEquation("Tbf", "Biofilm Temperature")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        # eq.Residual = self.Tbf(x) - 0.5 * (self.T(x) + self.Ti(x))
-        #eq.Residual = self.Tbf(x) - 0.5 * (self.T(x) + self.Ti(x))
-        eq.Residual = self.Qout(x) - (self.T(x) - self.Tbf(x)) * (2 * self.pi * self.D(x) * self.hint(x))
+        eq.Residual = self.Qout(x) - (self.T(x) - self.Tbf(x)) * (self.pi * self.D(x) * self.hint(x))
 
 
     def define_variables(self):

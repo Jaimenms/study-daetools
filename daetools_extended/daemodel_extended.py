@@ -76,6 +76,7 @@ class daeModelExtended(daeModel):
 
         # Instantiate each submodel
         for submodel_name, submodel_data in self.data["submodels"].items():
+            print("Instantiating {0}".format(submodel_name))
             self.instantiate_submodel(submodel_name, submodel_data, node_tree)
 
 
@@ -94,6 +95,7 @@ class daeModelExtended(daeModel):
         class_ = getattr(module_, class_name)
 
         # Instantiate the submodel class
+        print("with class {0}".format(class_name))
         self.submodels[submodel_name] = class_(
             submodel_name,
             Parent=self,
@@ -181,6 +183,7 @@ class daeModelExtended(daeModel):
         if 'specifications' in self.data:
             for name, value in self.data['specifications'].items():
                 n = getattr(self, name).NumberOfPoints
+                print(name,n)
                 if n == 1:
                     getattr(self, name).AssignValue(value)
                 else:

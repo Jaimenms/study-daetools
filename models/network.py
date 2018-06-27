@@ -11,7 +11,7 @@ equations could be included in the node model but they are easier coded here)
 
 from daetools.pyDAE import *
 from daetools_extended.daemodel_extended import daeModelExtended
-from daetools_extended.tools import get_node_tree, execute_recursive_method
+from daetools_extended.tools import get_node_tree, execute_recursive_method, get_initialdata_from_reporter, update_initialdata
 
 import pandas as pd
 
@@ -54,7 +54,7 @@ class NetworkSimulation(daeSimulation):
         self.m.SetReportingOn(set_reporting)
 
         if set_reporting:
-            self.ReportingInterval = 100
+            self.ReportingInterval = reporting_interval
 
         if time_horizon > 0:
             self.TimeHorizon = time_horizon
@@ -92,7 +92,7 @@ def simulate(data={}):
     #cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
 
     # Instantiate
-    simulation = NetworkSimulation("", data=data, set_reporting = True, reporting_interval = 100, time_horizon = 10)
+    simulation = NetworkSimulation("", data=data, set_reporting = True, reporting_interval = 3600*24, time_horizon = 3600*24*14)
 
     # Configurate
     datareporter = daeDelegateDataReporter()
@@ -136,9 +136,31 @@ if __name__ == "__main__":
 
     import examples.network_examples as ex
 
-    data = ex.case_01()
+    data1 = ex.case_external_film_condensation_pipe()
 
-    simulation1, dr1_1, dr2_1 = simulate(data=data)
+    data2 = ex.case_biofilmed_external_film_cond_pipe()
+
+    print("*******Simulation 1 started")
+    simulation1, dr1_1, dr2_1 = simulate(data=data1)
+    print("*******Simulation 1 concluded")
+
+    #    with pd.option_context('display.max_rows', None, 'display.max_columns', 20):
+    #       print(dr2_1.data_frame)
+
+    previous_output = get_initialdata_from_reporter(dr1_1)
+
+    new_data2 = update_initialdata(data1['name'], previous_output, data2)
+
+    print("*******Simulation 2 started")
+    simulation2, dr1_2, dr2_2 = simulate(data=new_data2)
+    print("*******Simulation 2 concluded")
 
     with pd.option_context('display.max_rows', None, 'display.max_columns', 20):
-       print(dr2_1.data_frame)
+        print(dr2_2.data_frame)
+
+    print("****m,f****")
+    print("MF:", dr2_2.data_frame.loc['pipe_01.mf', 'Values'])
+    print("****k*****")
+    print("K:", dr2_2.data_frame.loc['pipe_01.k', 'Values'])
+    print("****D*****")
+    print("D:", dr2_2.data_frame.loc['pipe_01.D', 'Values'])

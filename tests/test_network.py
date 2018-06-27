@@ -33,20 +33,16 @@ def get_testdata(case = "all"):
     return testdata
 
 
-#@pytest.mark.skip(reason="no way of currently testing this")
-#@pytest.mark.parametrize("data", get_testdata(case=["case_pipe","case_biofilmed_pipe","case_fixed_external_convection_pipe","case_biofilmed_fixed_external_convection_pipe"]))
-#@pytest.mark.parametrize("data", get_testdata(case="case_biofilmed_pipe"))
-#@pytest.mark.parametrize("data", get_testdata(case="case_biofilmed_external_film_cond_pipe"))
-#@pytest.mark.parametrize("data", get_testdata(case="case_biofilmed_fixed_external_convection_pipe"))
-#@pytest.mark.parametrize("data", get_testdata(case="case_external_film_condensation_pipe"))
-#@pytest.mark.parametrize("data", get_testdata(case="case_fixed_external_convection_pipe"))
-#@pytest.mark.parametrize("data", get_testdata(case="case_pipe"))
 @pytest.mark.parametrize("data", get_testdata(case="all"))
 def test_simulation(data):
     """
     Check if the reading node function can collect the correct data
     :return:
     """
+
+    if not data:
+        print("Data is empty")
+        assert False
 
     simulation1, dr1_1, dr2_1 = simulate(data=data)
 
@@ -63,4 +59,39 @@ def test_simulation(data):
 
     print(dr2_2.data_frame.loc['pipe_01.P','Values'][0])
 
-    assert dr2_2.data_frame.loc['pipe_01.P','Values'][0][0] > 990000.
+    assert dr2_2.data_frame.loc['pipe_01.P','Values'][0][0] < 400000.
+
+
+def test_simulation_advanced():
+    """
+    Check if the reading node function can collect the correct data
+    :return:
+    """
+    import examples.network_examples as ex
+
+    data1 = ex.case_external_film_condensation_pipe()
+
+    data2 = ex.case_biofilmed_external_film_cond_pipe()
+
+    print("*******Simulation 1 started")
+    simulation1, dr1_1, dr2_1 = simulate(data=data1)
+    print("*******Simulation 1 concluded")
+
+#    with pd.option_context('display.max_rows', None, 'display.max_columns', 20):
+#       print(dr2_1.data_frame)
+
+    previous_output = get_initialdata_from_reporter(dr1_1)
+
+    new_data2 = update_initialdata(data1['name'], previous_output, data2)
+
+    print("*******Simulation 2 started")
+    simulation2, dr1_2, dr2_2 = simulate(data=new_data2)
+    print("*******Simulation 2 concluded")
+
+    with pd.option_context('display.max_rows', None, 'display.max_columns', 20):
+       print(dr2_2.data_frame)
+
+    print("Initial biofilm density:",dr2_2.data_frame.loc['pipe_01.mf','Values'])
+
+    assert False
+    assert dr2_2.data_frame.loc['pipe_01.P','Values'][0][0] < 400000.

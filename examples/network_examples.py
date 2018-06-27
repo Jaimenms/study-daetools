@@ -9,13 +9,17 @@ from water_properties import density, heat_capacity, conductivity, viscosity
 
 def case_pipe():
 
-    p1 = 9.95*1e5
-    p2 = 985422.9428151655
-    q = 8.181359
+    p1 = 400000 - 1669
+    p2 = 400000 - 1669 - 65 - 1845.8 - 65 - 1062
+    t1 = 305.15
+    t2 = 328.35
 
-    t1 = 300.0
-    t2 = 301.0
-    Pm = 0.5 * (p1 + p2)
+    p1t = p1 - 65
+    p2t = p2 + 65
+
+    q = 0.10425
+
+    Pm = 0.5 * (p1t + p2t)
     Tm = 0.5 * (t1 + t2)
 
     network_data = {
@@ -40,7 +44,7 @@ def case_pipe():
                 },
                 'initial_guess':{
                     'w': q,
-                    'T': 300.0,
+                    'T': t1,
                     'P': p1,
                 }
             },
@@ -60,7 +64,7 @@ def case_pipe():
                 },
                 'initial_guess':{
                     'w': q,
-                    'T': 300.0,
+                    'T': t2,
                     'P': p2,
                 }
             },
@@ -74,31 +78,37 @@ def case_pipe():
                     'N': 10,
                 },
                 'states': {
-                    'stnWaterPropertiesSetup': 'Fixed', # Variable or Fixed
+                    'stnWaterPropertiesSetup': 'Variable', # Variable or Fixed
                 },
                 'parameters': {
-                    'Di': 1.0 * 4.026*0.0254,
+                    'Di': 0.01575,
                     'tetha': 0.0,
-                    'L': 100.0,
-                    'ep': 0.0018*0.0254,
-                    'Klb': 0.2,
-                    'Kub': 0.2, 'Npipes': 1.0,
+                    'L': 6.1,
+                    'ep': 45e-6,
+                    'Klb': 0.5*0.9,
+                    'Kub': 0.5*0.9,
+                    'Npipes': 1.0,
                 },
                 'specifications':{
 
                 },
                 'initial_guess': {
-                    'Re': 187515,
-                    'D': 1.0 * 4.026*0.0254,
-                    'v': 1.5,
+                    'Re': 13793,
+                    'D': 0.01575,
+                    'v': 0.54,
                     'k': q,
                     'T': 300.0,
-                    'P': [p1, p2],
-                    'fD': 0.018,
+                    'P': [p1t, p2t],
+                    'fD': 0.0330,
+                    'dp': 302.8,
                     'kappa': conductivity(Tm, Pm, simplified=True),
                     'cp': heat_capacity(Tm, Pm, simplified=True),
                     'rho': density(Tm, Pm, simplified=True),
                     'mu': viscosity(Tm, Pm, simplified=True),
+                    'Plb': p1,
+                    'Pub': p2,
+                    'Tlb': t1,
+                    'Tub': t2,
                 },
             },
         },
@@ -107,126 +117,21 @@ def case_pipe():
 
     return network_data
 
-
-def case_fixed_external_convection_pipe():
-
-    p1 = 9.95*1e5
-    p2 = 985422.9428151655
-    q = 8.18375730036397
-
-    t1 = 300.0
-    t2 = 301.0
-    Pm = 0.5 * (p1 + p2)
-    Tm = 0.5 * (t1 + t2)
-
-    network_data = {
-        'name': 'network_test_01',
-        'kind': 'network',
-        'module': 'models.network',
-        'class': 'Network',
-        'submodels': {
-            'node_A': {
-                'kind': 'node',
-                'module': 'models.source',
-                'class': 'Source',
-                'specifications': {
-                    'P': p1,
-                },
-                'parameters': {
-                    'Text': t1,
-                    'Pext': p1,
-                    'x': 0.0,
-                    'y': 0.0,
-                    'z': 0.0
-                },
-                'initial_guess':{
-                    'w': q,
-                    'T': 300.0,
-                    'P': p1,
-                }
-            },
-            'node_B': {
-                'kind': 'node',
-                'module': 'models.sink',
-                'class': 'Sink',
-                'specifications': {
-                    'P': p2,
-                },
-                'parameters': {
-                    'Text': t2,
-                    'Pext': p2,
-                    'x': 0.0,
-                    'y': 1.0,
-                    'z': 0.0
-                },
-                'initial_guess':{
-                    'w': q,
-                    'T': 300.0,
-                    'P': p2,
-                }
-            },
-            'pipe_01': {
-                'kind': 'edge',
-                'module': 'models.fixed_external_convection_pipe',
-                'class': 'FixedExternalConvectionPipe',
-                'from': 'node_A',
-                'to': 'node_B',
-                'domains': {
-                    'N': 10,
-                },
-                'states': {
-                    'stnWaterPropertiesSetup': 'Fixed', # Variable or Fixed
-                },
-                'parameters': {
-                    'Di': 1.0 * 4.026*0.0254,
-                    'Do': 1.1 * 4.026*0.0254,
-                    'tetha': 0.0,
-                    'L': 100.0,
-                    'ep': 0.0018*0.0254,
-                    'kwall': 51.9,
-                    'Text': 273 + 60.,
-                    'hext' : 6873,
-                    'Klb': 0.2,
-                    'Kub': 0.2, 'Npipes': 1.0,
-                },
-                'specifications':{
-
-                },
-                'initial_guess': {
-                    'Re': 118786.29183227483,
-                    'D': 1.0 * 4.026*0.0254,
-                    'v': 1.0,
-                    'k': q,
-                    'T': 300.0,
-                    'Ti': 322,
-                    'To': 328,
-                    'P': [p1, p2],
-                    'fD': 0.019647235607534896,
-                    'Qout': -20218.08370826369,
-                    'kappa': conductivity(Tm, Pm, simplified=True),
-                    'cp': heat_capacity(Tm, Pm, simplified=True),
-                    'rho': density(Tm, Pm, simplified=True),
-                    'mu': viscosity(Tm, Pm, simplified=True),
-                    'hint': 1398.8091902015963,
-
-                },
-            },
-        },
-    }
-
-
-    return network_data
 
 
 def case_fixed_external_temperature_pipe():
 
-    p1 = 9.95*1e5
-    p2 = 985422.9428151655
-    q = 8.181359
+    p1 = 400000 - 1669
+    p2 = 400000 - 1669 - 65 - 1845.8 - 65 - 1062
+    t1 = 305.15
+    t2 = 328.35
 
-    t1 = 300.0
-    t2 = 301.0
-    Pm = 0.5 * (p1 + p2)
+    p1t = p1 - 65
+    p2t = p2 + 65
+
+    q = 0.10425
+
+    Pm = 0.5 * (p1t + p2t)
     Tm = 0.5 * (t1 + t2)
 
     network_data = {
@@ -249,9 +154,9 @@ def case_fixed_external_temperature_pipe():
                     'y': 0.0,
                     'z': 0.0
                 },
-                'initial_guess':{
+                'initial_guess': {
                     'w': q,
-                    'T': 300.0,
+                    'T': t1,
                     'P': p1,
                 }
             },
@@ -269,9 +174,9 @@ def case_fixed_external_temperature_pipe():
                     'y': 1.0,
                     'z': 0.0
                 },
-                'initial_guess':{
+                'initial_guess': {
                     'w': q,
-                    'T': 300.0,
+                    'T': t2,
                     'P': p2,
                 }
             },
@@ -285,65 +190,66 @@ def case_fixed_external_temperature_pipe():
                     'N': 10,
                 },
                 'states': {
-                    'stnWaterPropertiesSetup': 'Fixed', # Variable or Fixed
+                    'stnWaterPropertiesSetup': 'Variable',  # Variable or Fixed
                 },
                 'parameters': {
-                    'Di': 1.0 * 4.026*0.0254,
-                    'Do': 1.1 * 4.026*0.0254,
+                    'Di': 0.01575,
+                    'Do': 0.01905,
+                    'kwall': 16.0,
                     'tetha': 0.0,
-                    'L': 100.0,
-                    'ep': 0.0018*0.0254,
-                    'kwall': 51.9,
-                    'Text': 273 + 60.,
-                    'Klb': 0.2,
-                    'Kub': 0.2, 'Npipes': 1.0,
+                    'L': 6.1,
+                    'ep': 45e-6,
+                    'Klb': 0.5 * 0.9,
+                    'Kub': 0.5 * 0.9,
+                    'Npipes': 1.0,
+                    'Text': 328.,
                 },
-                'specifications':{
+                'specifications': {
 
                 },
                 'initial_guess': {
-                    'Re': 187515,
-                    'D': 1.0 * 4.026*0.0254,
-                    'v': 1.0,
+                    'Re': 13793,
+                    'D': 0.01575,
+                    'v': 0.54,
                     'k': q,
-                    'T': 300.0,
-                    'Ti': 326.13475139707714,
-                    'To': 333.0,
-                    'P': [p1, p2],
-                    'fD': 0.019647,
-                    'Qout': -23477.07466549454,
+                    'T': [t1, t2],
+                    'P': [p1t, p2t],
+                    'fD': 0.0330,
+                    'dp': 302.8,
                     'kappa': conductivity(Tm, Pm, simplified=True),
                     'cp': heat_capacity(Tm, Pm, simplified=True),
                     'rho': density(Tm, Pm, simplified=True),
                     'mu': viscosity(Tm, Pm, simplified=True),
-                    'hint': 1398.8091902015963,
+                    'Plb': p1,
+                    'Pub': p2,
+                    'Tlb': t1,
+                    'Tub': t2,
+                    'Qout': [-3526.5, -605.2],
+                    'To': 328.,
+                    'Ti': [323.07, 331.42],
+                    'hint': 3976.69,
+                    'Resistance': 0.007941,
                 },
             },
         },
     }
 
-
     return network_data
 
 
+def case_fixed_external_convection_pipe():
+    p1 = 400000 - 1669
+    p2 = 400000 - 1669 - 65 - 1845.8 - 65 - 1062
+    t1 = 305.15
+    t2 = 328.35
 
+    p1t = p1 - 65
+    p2t = p2 + 65
 
-def case_external_film_condensation_pipe():
+    q = 0.10425
 
-    p1 = 9.95*1e5
-    p2 = 985422.9428151655
-    q = 8.181359
-    Ntub = 1
-
-    t1 = 300.0
-    t2 = 301.0
-    Pm = 0.5 * (p1 + p2)
+    Pm = 0.5 * (p1t + p2t)
     Tm = 0.5 * (t1 + t2)
-    Psat = 0.2*1e5
-
-    import water_at_saturation_properties
-
-    Tsat = water_at_saturation_properties.calculate_saturation_temperature(Psat)
 
     network_data = {
         'name': 'network_test_01',
@@ -365,9 +271,9 @@ def case_external_film_condensation_pipe():
                     'y': 0.0,
                     'z': 0.0
                 },
-                'initial_guess':{
+                'initial_guess': {
                     'w': q,
-                    'T': 300.0,
+                    'T': t1,
                     'P': p1,
                 }
             },
@@ -385,9 +291,128 @@ def case_external_film_condensation_pipe():
                     'y': 1.0,
                     'z': 0.0
                 },
-                'initial_guess':{
+                'initial_guess': {
                     'w': q,
-                    'T': 300.0,
+                    'T': t2,
+                    'P': p2,
+                }
+            },
+            'pipe_01': {
+                'kind': 'edge',
+                'module': 'models.fixed_external_convection_pipe',
+                'class': 'FixedExternalConvectionPipe',
+                'from': 'node_A',
+                'to': 'node_B',
+                'domains': {
+                    'N': 10,
+                },
+                'states': {
+                    'stnWaterPropertiesSetup': 'Variable',  # Variable or Fixed
+                },
+                'parameters': {
+                    'Di': 0.01575,
+                    'Do': 0.01905,
+                    'kwall': 16.0,
+                    'tetha': 0.0,
+                    'L': 6.1,
+                    'ep': 45e-6,
+                    'Klb': 0.5 * 0.9,
+                    'Kub': 0.5 * 0.9,
+                    'Npipes': 1.0,
+                    'Text': 273.15 + 60.,
+                    'hext': 17284.56,
+                },
+                'specifications': {
+
+                },
+                'initial_guess': {
+                    'Re': 13793,
+                    'D': 0.01575,
+                    'v': 0.54,
+                    'k': q,
+                    'T': [t1, t2],
+                    'P': [p1t, p2t],
+                    'fD': 0.0330,
+                    'dp': 302.8,
+                    'kappa': conductivity(Tm, Pm, simplified=True),
+                    'cp': heat_capacity(Tm, Pm, simplified=True),
+                    'rho': density(Tm, Pm, simplified=True),
+                    'mu': viscosity(Tm, Pm, simplified=True),
+                    'Plb': p1,
+                    'Pub': p2,
+                    'Tlb': t1,
+                    'Tub': t2,
+                    'Qout': [-3526.5, -605.2],
+                    'To': [329.75, 332.57],
+                    'Ti': [323.07, 331.42],
+                    'hint': 3976.69,
+                    'Resistance': 0.007941,
+                },
+            },
+        },
+    }
+
+    return network_data
+
+
+def case_external_film_condensation_pipe():
+
+    p1 = 400000 - 1669
+    p2 = 400000 - 1669 - 65 - 1845.8 - 65 - 1062
+    t1 = 305.15
+    t2 = 328.35
+
+    p1t = p1 - 65
+    p2t = p2 + 65
+
+    q = 0.10425
+
+    Pm = 0.5 * (p1t + p2t)
+    Tm = 0.5 * (t1 + t2)
+
+    network_data = {
+        'name': 'network_test_01',
+        'kind': 'network',
+        'module': 'models.network',
+        'class': 'Network',
+        'submodels': {
+            'node_A': {
+                'kind': 'node',
+                'module': 'models.source',
+                'class': 'Source',
+                'specifications': {
+                    'P': p1,
+                },
+                'parameters': {
+                    'Text': t1,
+                    'Pext': p1,
+                    'x': 0.0,
+                    'y': 0.0,
+                    'z': 0.0
+                },
+                'initial_guess': {
+                    'w': q,
+                    'T': t1,
+                    'P': p1,
+                }
+            },
+            'node_B': {
+                'kind': 'node',
+                'module': 'models.sink',
+                'class': 'Sink',
+                'specifications': {
+                    'P': p2,
+                },
+                'parameters': {
+                    'Text': t2,
+                    'Pext': p2,
+                    'x': 0.0,
+                    'y': 1.0,
+                    'z': 0.0
+                },
+                'initial_guess': {
+                    'w': q,
+                    'T': t2,
                     'P': p2,
                 }
             },
@@ -401,160 +426,49 @@ def case_external_film_condensation_pipe():
                     'N': 10,
                 },
                 'states': {
-                    'stnWaterPropertiesSetup': 'Fixed', # Variable or Fixed
+                    'stnWaterPropertiesSetup': 'Variable',  # Variable or Fixed
                 },
                 'parameters': {
-                    'Di': 1.0 * 4.026*0.0254,
-                    'Do': 1.1 * 4.026*0.0254,
+                    'Di': 0.01575,
+                    'Do': 0.01905,
+                    'kwall': 16.0,
                     'tetha': 0.0,
-                    'L': 100.0,
-                    'ep': 0.0018*0.0254,
-                    'kwall': 51.9,
-                    'rhov': 1/7.650,
-                    'hvap': 2358400,
-                    'Tsat': Tsat,
-                    'Psat': Psat,
-                    'fNtub': Ntub ** 0.75 - (Ntub - 1) ** 0.75,
-                    'Klb': 0.2,
-                    'Kub': 0.2, 'Npipes': 1.0,
-
+                    'L': 6.1,
+                    'ep': 45e-6,
+                    'Klb': 0.5 * 0.9,
+                    'Kub': 0.5 * 0.9,
+                    'Npipes': 1.0,
+                    'rhov':  0.13044 ,
+                    'hvap': 2357680,
+                    'Tsat': 60 + 273.15,
+                    'Psat': 19950,
+                    'fNtub': 1.0,
                 },
-                'specifications':{
+                'specifications': {
 
                 },
                 'initial_guess': {
-                    'Re': 187515,
-                    'D': 1.0 * 4.026*0.0254,
-                    'v': 1.0,
+                    'Re': 13793,
+                    'D': 0.01575,
+                    'v': 0.54,
                     'k': q,
-                    'T': 300.0,
-                    'Ti': 322.5068326854783,
-                    'To': 328.41907571019976,
-                    'P': [p1, p2],
-                    'fD': 0.018,
+                    'T': [t1, t2],
+                    'P': [p1t, p2t],
+                    'fD': 0.0330,
+                    'dp': 302.8,
                     'kappa': conductivity(Tm, Pm, simplified=True),
                     'cp': heat_capacity(Tm, Pm, simplified=True),
                     'rho': density(Tm, Pm, simplified=True),
                     'mu': viscosity(Tm, Pm, simplified=True),
-                    'hint': 1425.,
-                    'hext': 10000.,
-                    'Qout': -21000.
-                },
-            },
-        },
-    }
-
-
-    return network_data
-
-
-def case_biofilmed_fixed_external_convection_pipe():
-
-    p1 = 9.95 * 1e5
-    p2 = 985422.9428151655
-    q = 8.18375730036397
-
-    t1 = 300.0
-    t2 = 301.0
-    Pm = 0.5 * (p1 + p2)
-    Tm = 0.5 * (t1 + t2)
-
-    network_data = {
-        'name': 'network_test_01',
-        'kind': 'network',
-        'module': 'models.network',
-        'class': 'Network',
-        'submodels': {
-            'node_A': {
-                'kind': 'node',
-                'module': 'models.source',
-                'class': 'Source',
-                'specifications': {
-                    'P': p1,
-                },
-                'parameters': {
-                    'Text': t1,
-                    'Pext': p1,
-                    'x': 0.0,
-                    'y': 0.0,
-                    'z': 0.0
-                },
-                'initial_guess': {
-                    'w': q,
-                    'T': 300.0,
-                    'P': p1,
-                }
-            },
-            'node_B': {
-                'kind': 'node',
-                'module': 'models.sink',
-                'class': 'Sink',
-                'specifications': {
-                    'P': p2,
-                },
-                'parameters': {
-                    'Text': t2,
-                    'Pext': p2,
-                    'x': 0.0,
-                    'y': 1.0,
-                    'z': 0.0
-                },
-                'initial_guess': {
-                    'w': q,
-                    'T': 300.0,
-                    'P': p2,
-                }
-            },
-            'pipe_01': {
-                'kind': 'edge',
-                'module': 'models.biofilmed_fixed_external_convection_pipe',
-                'class': 'BiofilmedFixedExternalConvectionPipe',
-                'from': 'node_A',
-                'to': 'node_B',
-                'domains': {
-                    'N': 10,
-                },
-                'states': {
-                    'stnWaterPropertiesSetup': 'Fixed',  # Variable or Fixed
-                },
-                'parameters': {
-                    'Di': 1.0 * 4.026 * 0.0254,
-                    'Do': 1.1 * 4.026 * 0.0254,
-                    'tetha': 0.0,
-                    'L': 100.0,
-                    'ep': 0.0018 * 0.0254,
-                    'kwall': 51.9,
-                    'Text': 273 + 60.,
-                    'hext': 6873,
-                    'rhomf': 980.,
-                    'mfi': 1e-9,
-                    'Klb': 0.2,
-                    'Kub': 0.2, 'Npipes': 1.0,
-
-                },
-                'specifications': {
-
-                },
-                'initial_guess': {
-                    'Re': 118786.29183227483,
-                    'D': 1.0 * 4.026 * 0.0254,
-                    'v': 1.0,
-                    'k': q,
-                    'T': 300.0,
-                    'Ti': 322,
-                    'To': 328,
-                    'P': [p1, p2],
-                    'fD': 0.019647235607534896,
-                    'Qout': -20218.08370826369,
-                    'kappa': conductivity(Tm, Pm, simplified=True),
-                    'cp': heat_capacity(Tm, Pm, simplified=True),
-                    'rho': density(Tm, Pm, simplified=True),
-                    'mu': viscosity(Tm, Pm, simplified=True),
-                    'hint': 1398.8091902015963,
-                    'mf': 1e-9,
-                },
-                'initial_conditions': {
-                    #'mf': 0.0,
+                    'Plb': p1,
+                    'Pub': p2,
+                    'Tlb': t1,
+                    'Tub': t2,
+                    'Qout': [-3526.5, -605.2],
+                    'To': [329.75, 332.57],
+                    'Ti': [323.07, 331.42],
+                    'hint': 3976.69,
+                    'Resistance': 0.007941,
                 },
             },
         },
@@ -565,13 +479,17 @@ def case_biofilmed_fixed_external_convection_pipe():
 
 def case_biofilmed_pipe():
 
-    p1 = 9.95 * 1e5
-    p2 = 985422.9428151655
-    q = 8.18375730036397
+    p1 = 400000 - 1669
+    p2 = 400000 - 1669 - 65 - 1845.8 - 65 - 1062
+    t1 = 305.15
+    t2 = 328.35
 
-    t1 = 300.0
-    t2 = 301.0
-    Pm = 0.5 * (p1 + p2)
+    p1t = p1 - 65
+    p2t = p2 + 65
+
+    q = 0.10425
+
+    Pm = 0.5 * (p1t + p2t)
     Tm = 0.5 * (t1 + t2)
 
     network_data = {
@@ -594,9 +512,9 @@ def case_biofilmed_pipe():
                     'y': 0.0,
                     'z': 0.0
                 },
-                'initial_guess': {
+                'initial_guess':{
                     'w': q,
-                    'T': 300.0,
+                    'T': t1,
                     'P': p1,
                 }
             },
@@ -614,9 +532,9 @@ def case_biofilmed_pipe():
                     'y': 1.0,
                     'z': 0.0
                 },
-                'initial_guess': {
+                'initial_guess':{
                     'w': q,
-                    'T': 300.0,
+                    'T': t2,
                     'P': p2,
                 }
             },
@@ -630,38 +548,39 @@ def case_biofilmed_pipe():
                     'N': 10,
                 },
                 'states': {
-                    'stnWaterPropertiesSetup': 'Fixed',  # Variable or Fixed
+                    'stnWaterPropertiesSetup': 'Variable', # Variable or Fixed
                 },
                 'parameters': {
-                    'Di': 1.0 * 4.026 * 0.0254,
+                    'Di': 0.01575,
                     'tetha': 0.0,
-                    'L': 100.0,
-                    'ep': 0.0018 * 0.0254,
+                    'L': 6.1,
+                    'ep': 45e-6,
+                    'Klb': 0.5*0.9,
+                    'Kub': 0.5*0.9,
+                    'Npipes': 1.0,
                     'rhomf': 980.,
-                    'mfi': 1e-9,
-                    'Klb': 0.2,
-                    'Kub': 0.2, 'Npipes': 1.0,
-
+                    'mfi': 1e-6,
                 },
-                'specifications': {
+                'specifications':{
 
                 },
                 'initial_guess': {
-                    'Re': 118786.29183227483,
-                    'D': 1.0 * 4.026 * 0.0254,
-                    'v': 1.0,
+                    'Re': 13793,
+                    'D': 0.01575,
+                    'v': 0.54,
                     'k': q,
                     'T': 300.0,
-                    'P': [p1, p2],
-                    'fD': 0.019647235607534896,
+                    'P': [p1t, p2t],
+                    'fD': 0.0330,
+                    'dp': 302.8,
                     'kappa': conductivity(Tm, Pm, simplified=True),
                     'cp': heat_capacity(Tm, Pm, simplified=True),
                     'rho': density(Tm, Pm, simplified=True),
                     'mu': viscosity(Tm, Pm, simplified=True),
-                    'mf': 1e-9,
-                },
-                'initial_conditions': {
-                    #'mf': 0.0,
+                    'Plb': p1,
+                    'Pub': p2,
+                    'Tlb': t1,
+                    'Tub': t2,
                 },
             },
         },
@@ -669,23 +588,19 @@ def case_biofilmed_pipe():
 
     return network_data
 
+def case_biofilmed_fixed_external_convection_pipe():
+    p1 = 400000 - 1669
+    p2 = 400000 - 1669 - 65 - 1845.8 - 65 - 1062
+    t1 = 305.15
+    t2 = 328.35
 
-def case_biofilmed_external_film_cond_pipe():
+    p1t = p1 - 65
+    p2t = p2 + 65
 
-    p1 = 9.95*1e5
-    p2 = 985422.9428151655
-    q = 8.181359
-    Ntub = 1
+    q = 0.10425
 
-    t1 = 300.0
-    t2 = 301.0
-    Pm = 0.5 * (p1 + p2)
+    Pm = 0.5 * (p1t + p2t)
     Tm = 0.5 * (t1 + t2)
-    Psat = 0.2*1e5
-
-    import water_at_saturation_properties
-
-    Tsat = water_at_saturation_properties.calculate_saturation_temperature(Psat)
 
     network_data = {
         'name': 'network_test_01',
@@ -707,9 +622,9 @@ def case_biofilmed_external_film_cond_pipe():
                     'y': 0.0,
                     'z': 0.0
                 },
-                'initial_guess':{
+                'initial_guess': {
                     'w': q,
-                    'T': 300.0,
+                    'T': t1,
                     'P': p1,
                 }
             },
@@ -727,67 +642,192 @@ def case_biofilmed_external_film_cond_pipe():
                     'y': 1.0,
                     'z': 0.0
                 },
-                'initial_guess':{
+                'initial_guess': {
                     'w': q,
-                    'T': 300.0,
+                    'T': t2,
                     'P': p2,
                 }
             },
             'pipe_01': {
                 'kind': 'edge',
-                'module': 'models.biofilmed_external_film_cond_pipe',
-                'class': 'BiofilmedExternalFilmCondensationPipe',
+                'module': 'models.biofilmed_fixed_external_convection_pipe',
+                'class': 'BiofilmedFixedExternalConvectionPipe',
                 'from': 'node_A',
                 'to': 'node_B',
                 'domains': {
                     'N': 10,
                 },
                 'states': {
-                    'stnWaterPropertiesSetup': 'Fixed', # Variable or Fixed
+                    'stnWaterPropertiesSetup': 'Variable',  # Variable or Fixed
                 },
                 'parameters': {
-                    'Di': 1.0 * 4.026*0.0254,
-                    'Do': 1.1 * 4.026*0.0254,
+                    'Di': 0.01575,
+                    'Do': 0.01905,
+                    'kwall': 16.0,
                     'tetha': 0.0,
-                    'L': 100.0,
-                    'ep': 0.0018*0.0254,
-                    'kwall': 51.9,
-                    'rhov': 1/7.650,
-                    'hvap': 2358400,
-                    'Tsat': Tsat,
-                    'Psat': Psat,
-                    'fNtub': Ntub ** 0.75 - (Ntub - 1) ** 0.75,
+                    'L': 6.1,
+                    'ep': 45e-6,
+                    'Klb': 0.5 * 0.9,
+                    'Kub': 0.5 * 0.9,
+                    'Npipes': 1.0,
+                    'Text': 273.15 + 60.,
+                    'hext': 17284.56,
+                    'mfi': 1e-6,
                     'rhomf': 980.,
-                    'mfi': 1e-9,
-                    'Klb': 0.2,
-                    'Kub': 0.2, 'Npipes': 1.0,
-
                 },
-                'specifications':{
+                'specifications': {
 
                 },
                 'initial_guess': {
-                    'Re': 187515,
-                    'D': 1.0 * 4.026*0.0254,
-                    'v': 1.0,
+                    'Re': 13793,
+                    'D': 0.01575,
+                    'v': 0.54,
                     'k': q,
-                    'T': 300.0,
-                    'Ti': 322.5068326854783,
-                    'To': 328.41907571019976,
-                    'P': [p1, p2],
-                    'fD': 0.018,
+                    'T': [t1, t2],
+                    'P': [p1t, p2t],
+                    'fD': 0.0330,
+                    'dp': 302.8,
                     'kappa': conductivity(Tm, Pm, simplified=True),
                     'cp': heat_capacity(Tm, Pm, simplified=True),
                     'rho': density(Tm, Pm, simplified=True),
                     'mu': viscosity(Tm, Pm, simplified=True),
-                    'hint': 1425.,
-                    'hext': 10000.,
-                    'Qout': -21000.,
-                    'mf': 1e-9,
+                    'Plb': p1,
+                    'Pub': p2,
+                    'Tlb': t1,
+                    'Tub': t2,
+                    'Qout': [-3526.5, -605.2],
+                    'To': [329.75, 332.57],
+                    'Ti': [323.07, 331.42],
+                    'hint': 3976.69,
+                    'Resistance': 0.007941,
                 },
             },
         },
     }
 
+    return network_data
+
+
+def case_biofilmed_external_film_cond_pipe():
+    p1 = 400000 - 1669
+    p2 = 400000 - 1669 - 65 - 1845.8 - 65 - 1062
+    t1 = 305.15
+    t2 = 328.35
+
+    p1t = p1 - 65
+    p2t = p2 + 65
+
+    q = 0.10425
+
+    Pm = 0.5 * (p1t + p2t)
+    Tm = 0.5 * (t1 + t2)
+
+    network_data = {
+        'name': 'network_test_01',
+        'kind': 'network',
+        'module': 'models.network',
+        'class': 'Network',
+        'submodels': {
+            'node_A': {
+                'kind': 'node',
+                'module': 'models.source',
+                'class': 'Source',
+                'specifications': {
+                    'P': p1,
+                },
+                'parameters': {
+                    'Text': t1,
+                    'Pext': p1,
+                    'x': 0.0,
+                    'y': 0.0,
+                    'z': 0.0
+                },
+                'initial_guess': {
+                    'w': q,
+                    'T': t1,
+                    'P': p1,
+                }
+            },
+            'node_B': {
+                'kind': 'node',
+                'module': 'models.sink',
+                'class': 'Sink',
+                'specifications': {
+                    'P': p2,
+                },
+                'parameters': {
+                    'Text': t2,
+                    'Pext': p2,
+                    'x': 0.0,
+                    'y': 1.0,
+                    'z': 0.0
+                },
+                'initial_guess': {
+                    'w': q,
+                    'T': t2,
+                    'P': p2,
+                }
+            },
+            'pipe_01': {
+                'kind': 'edge',
+                'module': 'models.biofilmed_external_film_cond_pipe',
+                'class': 'BiofilmedExternalFilmCondPipe',
+                'from': 'node_A',
+                'to': 'node_B',
+                'domains': {
+                    'N': 10,
+                },
+                'states': {
+                    'stnWaterPropertiesSetup': 'Variable',  # Variable or Fixed
+                },
+                'parameters': {
+                    'Di': 0.01575,
+                    'Do': 0.01905,
+                    'kwall': 16.0,
+                    'tetha': 0.0,
+                    'L': 6.1,
+                    'ep': 45e-6,
+                    'Klb': 0.5 * 0.9,
+                    'Kub': 0.5 * 0.9,
+                    'Npipes': 1.0,
+                    'rhov': 0.13044,
+                    'hvap': 2357680,
+                    'Tsat': 60 + 273.15,
+                    'Psat': 19950,
+                    'fNtub': 1.0,
+                    'rhomf': 980.,
+                    'mfi': 1e-6,
+                },
+                'specifications': {
+                    #'mf': 0.000001
+                },
+                'initial_guess': {
+                    'Re': 13793,
+                    'D': 0.01575,
+                    'v': 0.54,
+                    'k': q,
+                    'T': [t1, t2],
+                    'P': [p1t, p2t],
+                    'fD': 0.0330,
+                    'dp': 302.8,
+                    'kappa': conductivity(Tm, Pm, simplified=True),
+                    'cp': heat_capacity(Tm, Pm, simplified=True),
+                    'rho': density(Tm, Pm, simplified=True),
+                    'mu': viscosity(Tm, Pm, simplified=True),
+                    'Plb': p1,
+                    'Pub': p2,
+                    'Tlb': t1,
+                    'Tub': t2,
+                    'Qout': [-3526.5, -605.2],
+                    'To': [329.75, 332.57],
+                    'Ti': [323.07, 331.42],
+                    'hint': 3976.69,
+                    'Resistance': 0.007941,
+                    'mf': 1e-6,
+                },
+            },
+        },
+    }
 
     return network_data
+
