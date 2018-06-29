@@ -2,8 +2,26 @@ __doc__="""
 DaetTools model that describes the behavior of a water flowing in a pipe with the effect of biofim formation.
 """
 
-
 from daetools.pyDAE import *
+# These are methods and constants imported from daeTools C++ code
+daeVariable = daeVariable
+daeVariableType = daeVariableType
+daeDomain = daeDomain
+Constant = Constant
+daeParameter = daeParameter
+eClosedClosed = eClosedClosed
+eOpenClosed = eOpenClosed
+unit = unit
+Abs = Abs
+Log = Log
+Log10 = Log10
+Exp = Exp
+Sin = Sin
+eUpperBound = eUpperBound
+eLowerBound = eLowerBound
+eCFDM = eCFDM
+dt = dt
+d = d
 from pyUnits import m, kg, s, K, Pa, J, W, rad
 
 try:
@@ -26,7 +44,6 @@ class Pipe(Edge):
         Edge.define_domains(self)
 
         self.x = daeDomain("x", self, unit(), "X axis domain")
-
         self.domain_len = self.data['domains']['N']
 
 
@@ -57,17 +74,20 @@ class Pipe(Edge):
         Edge.define_variables(self)
 
         # Variable types
-        diameter_t = daeVariableType("diameter_t", (m ** (1)), 0.001, 1.0, 0.5, 1e-05)
-        darcy_t = daeVariableType("darcy_t", dimless, 0.01, 0.5, 0.018, 1e-03)
+        diameter_t = daeVariableType("diameter_t", (m ** (1)), 0.00001, 10.0, 0.5, 1e-05)
+        darcy_t = daeVariableType("darcy_t", dimless, 0.0001, 5, 0.018, 1e-03)
         water_temperature_t = daeVariableType("temperature_t", (K ** (1)), 273.0, 400.0, 300.0, 0.01)
-        mass_flowrate_t = daeVariableType("mass_flowrate_t", (kg ** (1)) * (s ** (-1)), 0.001, 100.0, 5.0, 1e-05)
+        mass_flowrate_t = daeVariableType("mass_flowrate_t", (kg ** (1)) * (s ** (-1)), 1e-6, 100.0, 0.1, 1e-06)
         deltap_t = daeVariableType("deltap_t", Pa / m, -1e6, 1e6, 2000, 1e-05)
 
-        velocity_t = daeVariableType("velocity_t", (m ** (1)) * (s ** (-1)), 0.001, 10.0, 1.0, 1e-05)
+        velocity_t = daeVariableType("velocity_t", (m ** (1)) * (s ** (-1)), 1e-6, 10.0, 1.0, 1e-06)
 
         # Secondary variables
         self.H = daeVariable("H", power_t, self, "Fluid Entalphy", [self.x, ])
         self.fD = daeVariable("fD", darcy_t, self, "Darcy friction factor", [self.x, ])
+        self.fDturb = daeVariable("fDturb", darcy_t, self, "Turbulent Darcy friction factor", [self.x, ])
+        self.fDlam = daeVariable("fDlam", darcy_t, self, "Laminar Darcy friction factor", [self.x, ])
+        self.fregime = daeVariable("fregime", no_t, self, "Flow regime selector", [self.x, ])
         self.D = daeVariable("D", diameter_t, self, "Internal flow diameter", [self.x, ])
         self.v = daeVariable("v", velocity_t, self, "Internal flow velocity", [self.x, ])
         self.dp = daeVariable("dp", deltap_t, self, "Delta Pressure", [self.x, ])
@@ -99,6 +119,13 @@ class Pipe(Edge):
         eq.Residual = self.v(x) - self.k() / ( self.rho(x) * A )
 
 
+    def eq_entalphy(self):
+
+        eq = self.CreateEquation("Entalphy", "Fluid Entalphy")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.k() * self.cp(x) * self.T(x) - self.H(x)
+
+
     def eq_internal_diameter(self):
 
         eq = self.CreateEquation("D", "D_internal_flow_diameter")
@@ -113,27 +140,89 @@ class Pipe(Edge):
         eq.Residual = self.Re(x) - self.D(x) * Abs(self.v(x)) * self.rho(x) / self.mu(x)
 
 
-    def eq_friction_factor_auxiliar(self):
+    def eq_fregime(self):
 
-        # TODO - Include laminar flow
-        eq = self.CreateEquation("f_D", "FRI_friction_factor")
+        eq = self.CreateEquation("fregime", "Flow regime selector")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        eq.Residual = self.fD(x) ** -0.5 + 2. * Log10(self.ep() / 3.7 / self.D(x) + (2.51 / self.Re(x)) * self.fD(x) ** -0.5 )
+        Re = self.Re(x)
+        fregime = (1 + Exp(-10 * (Re / 3150 - 1))) ** -1
+        eq.Residual = self.fregime(x) - fregime
 
 
-    def eq_entalphy(self):
+    def eq_fDlaminar(self):
 
-        eq = self.CreateEquation("Entalphy", "Fluid Entalphy")
+        eq = self.CreateEquation("fDlam", "Laminar darcy factor")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        eq.Residual = self.k() * self.cp(x) * self.T(x) - self.H(x)
+        Re = self.Re(x)
+        fDlam = 64/Re
+        eq.Residual = self.fDlam(x) - fDlam
+
+
+    def eq_fDturb(self):
+
+        eq = self.CreateEquation("fDturb", "Turbulent darcy factor")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        Re = self.Re(x)
+        ep = self.ep()
+        D = self.D(x)
+        A = (2.457 * Log(((7 / Re) ** 0.9 + 0.27 * ep / D) ** -1)) ** 16
+        B = (37530 / Re) ** 16
+        ff = 2 * ((8 / Re) ** 12 + (A + B) ** -1.5) ** (1 / 12)
+        fDturb  = 4 * ff
+        eq.Residual = self.fDturb(x) - fDturb
+
+
+    def eq_fD(self):
+
+        self.stnFlowRegimeSetup = self.STN("FlowRegimeSetup")
+
+        self.STATE("Laminar")
+
+        eq = self.CreateEquation("fDForcedLaminar", "Darcy factor - Laminar")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        fDlam = self.fDlam(x)
+        eq.Residual = self.fD(x) - fDlam
+
+        # self.ON_CONDITION(Time() > Constant(100000000*s), switchToStates     = [ ('FlowRegimeSetup', 'Calculated') ],
+        #                                             setVariableValues  = [],
+        #                                             triggerEvents      = [],
+        #                                             userDefinedActions = [] )
+
+
+        self.STATE("Turbulent")
+
+        eq = self.CreateEquation("fDForcedTurbulent", "Darcy factor - Turbulent")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        fDturb = self.fDturb(x)
+        eq.Residual = self.fD(x) - fDturb
+
+        # self.ON_CONDITION(Time() > Constant(100*s), switchToStates     = [ ('FlowRegimeSetup', 'Calculated') ],
+        #                                             setVariableValues  = [],
+        #                                             triggerEvents      = [],
+        #                                             userDefinedActions = [] )
+
+
+        self.STATE("Calculated")
+
+        eq = self.CreateEquation("fDCalculated", "Darcy factor - Calculated")
+
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        fDlam = self.fDlam(x)
+        fDturb = self.fDturb(x)
+        fregime = self.fregime(x)
+        fD = self.fD(x) - ((fDturb - fDlam) * fregime + fDlam)
+        eq.Residual = self.fD(x) - fD
+
+        self.END_STN()
 
 
     def eq_delta_pressure(self):
 
         eq = self.CreateEquation("DeltaPressure", "Delta Pressure")
         x = eq.DistributeOnDomain(self.x,eClosedClosed)
-
-        hL = 0.5 * self.fD(x) * Abs(self.v(x)) * self.v(x) / ( self.D(x) * self.g )
+        Re = self.Re(x)
+        fD = self.fD(x) #TODO
+        hL = 0.5 * fD * Abs(self.v(x)) * self.v(x) / ( self.D(x) * self.g )
         DeltaP = self.g * self.rho(x) * hL
         eq.Residual = self.dp(x) - DeltaP
 
@@ -174,11 +263,14 @@ class Pipe(Edge):
         x = eq.DistributeOnDomain(self.x,eOpenClosed)
 
         A = 0.25 * 3.14 * self.D(x) ** 2
+
+        ## Nessa forma é Darcy TODO Corrigir isso!!!
         hL = 0.5 * self.fD(x) * Abs(self.v(x)) * self.v(x) / ( self.D(x) * self.g )
         DeltaP = self.g * self.rho(x) * hL
 
-        eq.Residual = dt(A*self.rho(x)*self.v(x)) + self.k()*d(self.v(x), self.x, eCFDM)/self.L() + d(A*self.P(x), self.x, eCFDM)/self.L() + A*DeltaP + A*self.rho(x)*self.g*Sin(self.tetha())
-
+        #eq.Residual = dt(A * self.rho(x) * self.v(x)) + self.k() * d(self.v(x), self.x, eCFDM) / self.L() + d(
+        #    A * self.P(x), self.x, eCFDM) / self.L() + A * DeltaP + A * self.rho(x) * self.g * Sin(self.tetha())
+        eq.Residual =  dt(A * self.rho(x) * self.v(x)) + self.k() * d(self.v(x), self.x, eCFDM) / self.L() + A * d(self.P(x), self.x, eCFDM) / self.L()  +  A * DeltaP +  A * self.rho(x) * self.g * Sin(self.tetha())
 
     def eq_heat_balance(self):
 
@@ -244,12 +336,15 @@ class Pipe(Edge):
 
         Edge.DeclareEquations(self)
 
+        self.eq_fDlaminar()
+        self.eq_fDturb()
+        self.eq_fregime()
+        self.eq_fD()
         self.eq_pressure_boundaries()
         self.eq_temperature_boundaries()
         self.eq_velocity()
         self.eq_internal_diameter()
         self.eq_entalphy()
-        self.eq_friction_factor_auxiliar()
         self.eq_mommentum_balance()
         self.eq_heat_balance()
         self.eq_Reynolds()

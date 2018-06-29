@@ -2,8 +2,10 @@ import pytest
 import pandas as pd
 
 from daetools.pyDAE import *
-from daetools_extended.daesimulation_extended import daeSimulationExtended
+
+from daetools_extended.tools import update_initialdata, get_initialdata_from_reporter
 from daetools_extended.tools import get_node_tree, get_initialdata_from_reporter, update_initialdata
+from daetools_extended.daesimulation_extended import daeSimulationExtended
 
 from daetools.pyDAE.data_reporters import daePandasDataReporter
 
@@ -14,7 +16,7 @@ def get_testdata(case = "all"):
     :return:
     """
 
-    import examples.network_examples as amodule
+    import examples.biofilm_examples as amodule
 
     testdata=list()
     for function_str in dir(amodule):
@@ -33,20 +35,28 @@ def get_testdata(case = "all"):
     return testdata
 
 
+
 def simulate(data={}):
 
     cfg = daeGetConfig()
+    #print(cfg)
     cfg.SetBoolean('daetools.activity.printHeader', False)
-    cfg.SetFloat('daetools.IDAS.MaxStep', 100.0)
-    cfg.SetFloat('daetools.IDAS.relativeTolerance', 1e-3)
-    cfg.GetInteger('daetools.IDAS.MaxNumSteps', 100000)
+    #cfg.SetBoolean('daetools.core.printInfo', True)
+    #cfg.SetBoolean('daetools.IDAS.printInfo', True)
+    #cfg.SetInteger('daetools.IDAS.MaxNumStepsIC', 500)
+    #cfg.SetInteger('daetools.IDAS.MaxNumJacsIC', 500)
+    #cfg.SetInteger('daetools.IDAS.MaxNumItersIC', 500)
+    #cfg.SetBoolean('daetools.IDAS.LineSearchOffIC', True)
+    cfg.SetString('daetools.core.equations.evaluationMode', 'computeStack_OpenMP')
+    #cfg.SetString('daetools.core.equations.evaluationMode', 'evaluationTree_OpenMP')
 
     # Calculate the node tree
     Name = data['name']
     node_tree = get_node_tree(Name, data)
+    print(data)
 
     # Instantiate
-    simulation = daeSimulationExtended(Name, data=data, node_tree=node_tree, set_reporting = True, reporting_interval = 3600*24, time_horizon = 3600*24)
+    simulation = daeSimulationExtended(Name, data=data, node_tree=node_tree, set_reporting = True, reporting_interval = 3600*24, time_horizon = 3600*24*14)
 
     # Configurate
     datareporter = daeDelegateDataReporter()
@@ -58,7 +68,7 @@ def simulate(data={}):
     datareporter.AddDataReporter(dr2)
 
     solver = daeIDAS()
-    #solver.RelativeTolerance = 1e-5
+    solver.RelativeTolerance = 1e-5
     log = daePythonStdOutLog()
 
     # Save the model report and the runtime model report
@@ -87,8 +97,7 @@ def simulate(data={}):
 
 
 @pytest.mark.parametrize("data", get_testdata(case="all"))
-#@pytest.mark.parametrize("data", get_testdata(case="case_biofilmed_external_film_cond_pipe"))
-def test_simulation(data):
+def test_biofilm(data):
     """
     Check if the reading node function can collect the correct data
     :return:
@@ -100,49 +109,8 @@ def test_simulation(data):
 
     simulation1, dr1_1, dr2_1 = simulate(data=data)
 
-    previous_output = get_initialdata_from_reporter(dr1_1)
-
-    new_data = update_initialdata(data['name'], previous_output, data)
-
-    new_data['submodels']['pipe_01']['states']['stnWaterPropertiesSetup'] = 'Variable'
-
-    simulation2, dr1_2, dr2_2 = simulate(data=new_data)
-
     with pd.option_context('display.max_rows', None, 'display.max_columns', 20):
-       print(dr2_2.data_frame)
+       print(dr2_1.data_frame)
 
-    print(dr2_2.data_frame.loc['pipe_01.P','Values'][0])
+    assert False
 
-    assert dr2_2.data_frame.loc['pipe_01.P','Values'][0][0] < 450000.
-
-
-def test_simulation_advanced():
-    """
-    Check if the reading node function can collect the correct data
-    :return:
-    """
-    import examples.network_examples as ex
-
-    data1 = ex.case_external_film_condensation_pipe()
-
-    data2 = ex.case_external_film_condensation_pipe()
-
-    print("*******Simulation 1 started")
-    simulation1, dr1_1, dr2_1 = simulate(data=data1)
-    print("*******Simulation 1 concluded")
-
-#    with pd.option_context('display.max_rows', None, 'display.max_columns', 20):
-#       print(dr2_1.data_frame)
-
-    previous_output = get_initialdata_from_reporter(dr1_1)
-
-    new_data2 = update_initialdata(data1['name'], previous_output, data2)
-
-    print("*******Simulation 2 started")
-    simulation2, dr1_2, dr2_2 = simulate(data=new_data2)
-    print("*******Simulation 2 concluded")
-
-    with pd.option_context('display.max_rows', None, 'display.max_columns', 20):
-       print(dr2_2.data_frame)
-
-    assert dr2_2.data_frame.loc['pipe_01.P','Values'][0][0] < 450000.

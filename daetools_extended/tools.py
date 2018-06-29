@@ -3,8 +3,27 @@ Extra tools for the daemode_extended module.
 """
 
 import numpy as np
+import importlib
 from copy import copy
 
+
+def get_module_class_from_data(data):
+
+    if 'module' in data:
+
+        # get relevant data
+        module_name = data['module']
+        class_name = data['class']
+
+        # Import the demanded class
+        module_ = importlib.import_module(module_name)
+        class_ = getattr(module_, class_name)
+
+    else:
+
+        class_ = None
+
+    return class_
 
 def get_model_name_list(name, data, kind, kind_list = list()):
     """

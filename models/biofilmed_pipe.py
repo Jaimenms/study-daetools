@@ -27,13 +27,20 @@ class BiofilmedPipe(Biofilm, Pipe):
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
         eq.Residual = self.D(x) - (self.Di() ** 2 - 4 * self.mf(x) * self.Di() / self.rhomf()) ** 0.5
 
+
     def eq_biofilm_temperature(self):
 
         eq = self.CreateEquation("Tbf", "Biofilm Temperature")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
-        # eq.Residual = self.Tbf(x) - 0.5 * (self.T(x) + self.Ti(x))
         #eq.Residual = self.Tbf(x) - 0.5 * (self.T(x) + self.Ti(x))
         eq.Residual = self.T(x) - self.Tbf(x)
+
+
+    def eq_biofilm_velocity(self):
+        eq = self.CreateEquation("vbf", "Biofilm Velocity")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.v(x) - self.vbf(x)
+
 
     def define_parameters(self):
         Pipe.define_parameters(self)
@@ -54,5 +61,9 @@ class BiofilmedPipe(Biofilm, Pipe):
         Pipe.DeclareEquations(self)
 
         self.eq_biofilm()
+        self.eq_biofilm_Jp()
+        self.eq_biofilm_b()
+        self.eq_biofilm_rate()
         self.eq_biofilm_temperature()
+        self.eq_biofilm_velocity()
 

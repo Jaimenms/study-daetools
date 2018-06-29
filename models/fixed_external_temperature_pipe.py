@@ -2,7 +2,6 @@ __doc__="""
 DaetTools model that describes the behavior of a water flowing in a pipe with the effect of biofim formation.
 """
 
-
 from daetools.pyDAE import *
 from pyUnits import m, kg, s, K, Pa, J, W, rad
 

@@ -25,8 +25,6 @@ def case_pipe():
     network_data = {
         'name': 'network_test_01',
         'kind': 'network',
-        'module': 'models.network',
-        'class': 'Network',
         'submodels': {
             'node_A': {
                 'kind': 'node',
@@ -79,6 +77,7 @@ def case_pipe():
                 },
                 'states': {
                     'stnWaterPropertiesSetup': 'Variable', # Variable or Fixed
+                    "stnFlowRegimeSetup": "Turbulent"
                 },
                 'parameters': {
                     'Di': 0.01575,
@@ -137,8 +136,6 @@ def case_fixed_external_temperature_pipe():
     network_data = {
         'name': 'network_test_01',
         'kind': 'network',
-        'module': 'models.network',
-        'class': 'Network',
         'submodels': {
             'node_A': {
                 'kind': 'node',
@@ -191,6 +188,7 @@ def case_fixed_external_temperature_pipe():
                 },
                 'states': {
                     'stnWaterPropertiesSetup': 'Variable',  # Variable or Fixed
+                    "stnFlowRegimeSetup": "Turbulent"
                 },
                 'parameters': {
                     'Di': 0.01575,
@@ -254,8 +252,6 @@ def case_fixed_external_convection_pipe():
     network_data = {
         'name': 'network_test_01',
         'kind': 'network',
-        'module': 'models.network',
-        'class': 'Network',
         'submodels': {
             'node_A': {
                 'kind': 'node',
@@ -308,6 +304,7 @@ def case_fixed_external_convection_pipe():
                 },
                 'states': {
                     'stnWaterPropertiesSetup': 'Variable',  # Variable or Fixed
+                    "stnFlowRegimeSetup": "Turbulent"
                 },
                 'parameters': {
                     'Di': 0.01575,
@@ -372,8 +369,6 @@ def case_external_film_condensation_pipe():
 
     network_data = {
         'name': 'network_test_01',
-        'kind': 'network',
-        'module': 'models.network',
         'class': 'Network',
         'submodels': {
             'node_A': {
@@ -427,6 +422,7 @@ def case_external_film_condensation_pipe():
                 },
                 'states': {
                     'stnWaterPropertiesSetup': 'Variable',  # Variable or Fixed
+                    "stnFlowRegimeSetup": "Turbulent"
                 },
                 'parameters': {
                     'Di': 0.01575,
@@ -495,8 +491,6 @@ def case_biofilmed_pipe():
     network_data = {
         'name': 'network_test_01',
         'kind': 'network',
-        'module': 'models.network',
-        'class': 'Network',
         'submodels': {
             'node_A': {
                 'kind': 'node',
@@ -549,6 +543,7 @@ def case_biofilmed_pipe():
                 },
                 'states': {
                     'stnWaterPropertiesSetup': 'Variable', # Variable or Fixed
+                    "stnFlowRegimeSetup": "Turbulent"
                 },
                 'parameters': {
                     'Di': 0.01575,
@@ -561,8 +556,9 @@ def case_biofilmed_pipe():
                     'rhomf': 980.,
                     'mfi': 1e-6,
                 },
-                'specifications':{
-
+                'specifications': {
+                    #'Tbf': 273.15 + 37,
+                    #'vbf': 0.54,
                 },
                 'initial_guess': {
                     'Re': 13793,
@@ -581,6 +577,8 @@ def case_biofilmed_pipe():
                     'Pub': p2,
                     'Tlb': t1,
                     'Tub': t2,
+                    'Tbf': t1,
+                    'vbf': 0.54,
                 },
             },
         },
@@ -605,8 +603,6 @@ def case_biofilmed_fixed_external_convection_pipe():
     network_data = {
         'name': 'network_test_01',
         'kind': 'network',
-        'module': 'models.network',
-        'class': 'Network',
         'submodels': {
             'node_A': {
                 'kind': 'node',
@@ -659,6 +655,7 @@ def case_biofilmed_fixed_external_convection_pipe():
                 },
                 'states': {
                     'stnWaterPropertiesSetup': 'Variable',  # Variable or Fixed
+                    "stnFlowRegimeSetup": "Turbulent"
                 },
                 'parameters': {
                     'Di': 0.01575,
@@ -700,6 +697,8 @@ def case_biofilmed_fixed_external_convection_pipe():
                     'Ti': [323.07, 331.42],
                     'hint': 3976.69,
                     'Resistance': 0.007941,
+                    'Tbf': t1,
+                    'vbf': 0.54,
                 },
             },
         },
@@ -709,13 +708,13 @@ def case_biofilmed_fixed_external_convection_pipe():
 
 
 def case_biofilmed_external_film_cond_pipe():
-    p1 = 400000 - 1669
-    p2 = 400000 - 1669 - 65 - 1845.8 - 65 - 1062
+    p1 = 414553 - 12814
+    p2 = 384385 + 12814 + 750
     t1 = 305.15
-    t2 = 328.35
+    t2 = 315.63
 
-    p1t = p1 - 65
-    p2t = p2 + 65
+    p1t = p1 - 45
+    p2t = p2 + 45
 
     q = 0.10425
 
@@ -725,8 +724,6 @@ def case_biofilmed_external_film_cond_pipe():
     network_data = {
         'name': 'network_test_01',
         'kind': 'network',
-        'module': 'models.network',
-        'class': 'Network',
         'submodels': {
             'node_A': {
                 'kind': 'node',
@@ -779,6 +776,7 @@ def case_biofilmed_external_film_cond_pipe():
                 },
                 'states': {
                     'stnWaterPropertiesSetup': 'Variable',  # Variable or Fixed
+                    "stnFlowRegimeSetup": "Turbulent"
                 },
                 'parameters': {
                     'Di': 0.01575,
@@ -824,6 +822,8 @@ def case_biofilmed_external_film_cond_pipe():
                     'hint': 3976.69,
                     'Resistance': 0.007941,
                     'mf': 1e-6,
+                    'Tbf': [t1+1, t2+1],
+                    'vbf': 0.54,
                 },
             },
         },

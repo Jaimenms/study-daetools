@@ -51,6 +51,13 @@ class BiofilmedFixedExternalConvectionPipe(Biofilm, FixedExternalConvectionPipe)
         eq.Residual = self.Qout(x) - (self.T(x) - self.Tbf(x)) * (self.pi * self.D(x) * self.hint(x))
 
 
+    def eq_biofilm_velocity(self):
+
+        eq = self.CreateEquation("vbf", "Biofilm Velocity")
+        x = eq.DistributeOnDomain(self.x, eClosedClosed)
+        eq.Residual = self.v(x) - self.vbf(x)
+
+
     def define_variables(self):
 
         FixedExternalConvectionPipe.define_variables(self)
@@ -70,4 +77,8 @@ class BiofilmedFixedExternalConvectionPipe(Biofilm, FixedExternalConvectionPipe)
         FixedExternalConvectionPipe.DeclareEquations(self)
 
         self.eq_biofilm()
+        self.eq_biofilm_Jp()
+        self.eq_biofilm_b()
+        self.eq_biofilm_rate()
         self.eq_biofilm_temperature()
+        self.eq_biofilm_velocity()

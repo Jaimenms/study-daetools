@@ -11,8 +11,9 @@ data dictionary. The models can assume two different kinds:
 from daetools.pyDAE import *
 from pyUnits import m, kg, s, K, Pa, J, W, rad
 
-import importlib
 import numpy as np
+
+from .tools import get_module_class_from_data
 
 
 class daeModelExtended(daeModel):
@@ -37,9 +38,9 @@ class daeModelExtended(daeModel):
         # Initialize the daeModel class
         daeModel.__init__(self, Name, Parent, Description)
 
-        # If it is nodal
-        if self.check_if_model_is_nodal(data['kind']):
 
+        # If it is nodal
+        if 'kind' in data and self.check_if_model_is_nodal(data['kind']):
             # Set list of edges that sends fluid to a node with name equal to submodel_name
             data = self.set_inlet_outlet(data['kind'], Name, data, node_tree, position='inlet')
 
@@ -80,19 +81,18 @@ class daeModelExtended(daeModel):
             self.instantiate_submodel(submodel_name, submodel_data, node_tree)
 
 
+
     def instantiate_submodel(self, submodel_name, submodel_data, node_tree):
         """
         This method instantiate each submodel, based on the model dictionary
         :return:
         """
 
+        class_ = get_module_class_from_data(submodel_data)
+
         # get relevant data
         module_name = submodel_data['module']
         class_name = submodel_data['class']
-
-        # Import the demanded class
-        module_ = importlib.import_module(module_name)
-        class_ = getattr(module_, class_name)
 
         # Instantiate the submodel class
         print("with class {0}".format(class_name))
@@ -245,7 +245,6 @@ class daeModelExtended(daeModel):
         Get the list of all edges that gives fluid to the node
         :return:
         """
-
         return self.data['inlet']
 
 
