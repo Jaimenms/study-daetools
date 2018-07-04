@@ -12,6 +12,7 @@ from daetools.pyDAE import *
 from pyUnits import m, kg, s, K, Pa, J, W, rad
 
 import numpy as np
+import collections
 
 from .tools import get_module_class_from_data
 
@@ -159,7 +160,15 @@ class daeModelExtended(daeModel):
         """
 
         if 'domains' in self.data:
-            self.x.CreateStructuredGrid(self.domain_len-1, 0.0, 1.0)
+            for domain, domain_data in self.data['domains'].items():
+                N = domain_data['N']
+                if 'initial' in domain_data:
+                    initial = domain_data['initial']
+                    final = domain_data['final']
+                    getattr(self, domain).CreateStructuredGrid(N - 1, initial, final)
+
+                else:
+                    getattr(self,domain).CreateArray(N)
 
 
     def setup_active_states(self):
@@ -183,7 +192,6 @@ class daeModelExtended(daeModel):
         if 'specifications' in self.data:
             for name, value in self.data['specifications'].items():
                 n = getattr(self, name).NumberOfPoints
-                print(name,n)
                 if n == 1:
                     getattr(self, name).AssignValue(value)
                 else:
@@ -207,8 +215,20 @@ class daeModelExtended(daeModel):
         """
         # Setting the parameters
         if 'parameters' in self.data:
-            for name, value in self.data['parameters'].items():
-                getattr(self, name).SetValue(value)
+            for name, values in self.data['parameters'].items():
+
+                # Get Shape of Domain
+                expected_shape = []
+                for domain in getattr(self, name).Domains:
+                    expected_shape.append(domain.NumberOfPoints)
+
+                if isinstance(values, collections.Iterable):
+                    i = 0
+                    for value in values:
+                        getattr(self, name).SetValue(i,value)
+                        i += 1
+                else:
+                    getattr(self, name).SetValues(values)
 
 
     def setup_initial_guess(self):
@@ -218,26 +238,40 @@ class daeModelExtended(daeModel):
         """
 
         # Setting the parameters
-        if 'initial_guess' in self.data:
-            for name, value in self.data['initial_guess'].items():
-                n = getattr(self, name).NumberOfPoints
-                if type(value) == list and len(value) == 2:
-                    i = 0
-                    for valuei in np.linspace(value[0],value[1],n):
-                        getattr(self, name).SetInitialGuess(i, valuei)
-                        i += 1
 
-                elif type(value) == list and len(value) > 2:
-                    i = 0
-                    for valuei in value:
-                        getattr(self, name).SetInitialGuess(i, valuei)
-                        i += 1
-                else:
-                    if n == 1:
-                        getattr(self, name).SetInitialGuess(value)
+        if 'initial_guess' in self.data:
+
+            for name, values in self.data['initial_guess'].items():
+
+                # Get Shape of Domain
+                expected_shape = []
+                for domain in getattr(self, name).Domains:
+                    expected_shape.append(domain.NumberOfPoints)
+                expected_shape = tuple(expected_shape)
+
+                if type(values) is dict:
+                    initial = values['initial']
+                    final = values['final']
+                    values = np.linspace(initial, final, expected_shape[0])
+
+                    if not expected_shape:
+                        print("Not expected shape for {0}".format(name))
+                        exit()
+
+                    if values.shape == expected_shape:
+                        getattr(self, name).SetInitialGuesses(np.asarray(values))
                     else:
-                        for i in range(0,n):
-                            getattr(self, name).SetInitialGuess(i, value)
+                        values = np.repeat(values, expected_shape[1])
+                        values = np.reshape(values, expected_shape)
+                        getattr(self, name).SetInitialGuesses(np.asarray(values))
+
+                else:
+                    if not expected_shape:
+                        getattr(self, name).SetInitialGuess(values)
+                    else:
+                        if not isinstance(values, collections.Iterable):
+                            values = values * np.ones(expected_shape)
+                        getattr(self, name).SetInitialGuesses(np.asarray(values))
 
 
     def get_inlet(self):

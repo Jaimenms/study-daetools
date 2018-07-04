@@ -38,7 +38,7 @@ class BiofilmedFixedExternalConvectionPipe(Biofilm, FixedExternalConvectionPipe)
         Resext = 1 / (self.pi * self.Do() * self.hext())
         Resint = 1 / (self.pi * self.D(x) * self.hint(x))
         Reswall = Log(self.Do() / self.Di()) / (2 * self.pi * self.kwall())
-        Resfilm = Log(self.Di() / self.D()) / (2 * self.pi * self.kappa()) # Melhorar ajustando T para kappa
+        Resfilm = Log(self.Di() / self.D(x)) / (2 * self.pi * self.kappa(x)) # Melhorar ajustando T para kappa
         eq.Residual = self.Resistance(x) - (Resint + Reswall + Resext + Resfilm)
 
 

@@ -44,12 +44,12 @@ class Sink(Node):
 
         # Mass to the node inlet
         for edge_name in self.get_inlet():
-            residual_aux += self.Parent.submodels[edge_name].k()
+            residual_aux += self.Parent.submodels[edge_name].kub()
             print("++ edge {0} upstream".format(edge_name))
 
         # Mass to the node outlet
         for edge_name in self.get_outlet():
-            residual_aux -= self.Parent.submodels[edge_name].k()
+            residual_aux -= self.Parent.submodels[edge_name].klb()
             print("++ edge {0} downstream".format(edge_name))
 
         # Instantiate equation NMB
@@ -71,13 +71,11 @@ class Sink(Node):
 
         # Mass to the node inlet
         for edge_name in self.get_inlet():
-            ind_edge_out = self.Parent.submodels[edge_name].domain_len - 1
-            residual_aux += self.Parent.submodels[edge_name].H(ind_edge_out)
+            residual_aux += self.Parent.submodels[edge_name].Hub()
 
         # Mass to the node outlet
         for edge_name in self.get_outlet():
-            # TODO - Consider cp in node and not external
-            residual_aux -= self.Parent.edges[edge_name].H(0)
+            residual_aux -= self.Parent.edges[edge_name].Hlb()
 
         eq = self.CreateEquation("NEB_nodal_energy_balance_2")
         eq.Residual = residual_aux

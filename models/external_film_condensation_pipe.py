@@ -35,10 +35,4 @@ class ExternalFilmCondensationPipe(ExternalFilmCondensation, Pipe):
     def DeclareEquations(self):
 
         Pipe.DeclareEquations(self)
-        ExternalFilmCondensation.eq_total_he(self)
-        ExternalFilmCondensation.eq_calculate_To(self)
-        ExternalFilmCondensation.eq_calculate_Ti(self)
-        ExternalFilmCondensation.eq_calculate_hint(self)
-        ExternalFilmCondensation.eq_calculate_hext(self)
-        ExternalFilmCondensation.eq_calculate_resistance(self)
-
+        ExternalFilmCondensation.DeclareEquations(self)

@@ -182,3 +182,16 @@ def update_initialdata_rec(prenom, nodedata, previous_output):
             nodedata['submodels'][node_name_i] = update_initialdata_rec(new_prenom, nodedata_i, previous_output)
 
     return nodedata
+
+
+def daeVariable_wrapper(variable, domains_list):
+    return variable(*domains_list)
+
+def distribute_on_domains(domains, eq, eKind):
+    if type(domains) == list:
+        domains_list = []
+        for domain in domains:
+            domains_list.append(eq.DistributeOnDomain(domain, eKind))
+        return domains_list
+    else:
+        return eq.DistributeOnDomain(domains, eKind)

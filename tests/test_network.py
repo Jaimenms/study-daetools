@@ -19,16 +19,20 @@ def get_testdata(case = "all"):
     testdata=list()
     for function_str in dir(amodule):
 
+        function_ = None
+
         if function_str[0:5] != "case_":
             continue
 
         if type(case) == list and function_str in case:
             function_ = getattr(amodule, function_str)
-            testdata.append(function_())
 
         elif case == "all" or function_str == case:
             function_ = getattr(amodule, function_str)
-            testdata.append(function_())
+
+        str = function_()
+        testdata.append(str)
+        print(function_str, str)
 
     return testdata
 
@@ -104,14 +108,10 @@ def test_simulation(data):
 
     new_data = update_initialdata(data['name'], previous_output, data)
 
-    new_data['submodels']['pipe_01']['states']['stnWaterPropertiesSetup'] = 'Variable'
-
     simulation2, dr1_2, dr2_2 = simulate(data=new_data)
 
     with pd.option_context('display.max_rows', None, 'display.max_columns', 20):
        print(dr2_2.data_frame)
-
-    print(dr2_2.data_frame.loc['pipe_01.P','Values'][0])
 
     assert dr2_2.data_frame.loc['pipe_01.P','Values'][0][0] < 450000.
 

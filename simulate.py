@@ -27,19 +27,39 @@ def save_reports(args):
 
     # Save the model report and the runtime model report
     xmlfile1 = '{0}.model.xml'.format(args.input, )
-    htmlfile1 = '{0}.model.xhml'.format(args.input, )
+    xmlfile1_modified = '{0}.model2.xml'.format(args.input, )
+    htmlfile1 = '{0}.model.hml'.format(args.input, )
     xslfile1 = "examples/dae-tools.xsl"
 
     simulation.m.SaveModelReport(xmlfile1)
-    # convert_to_xhtml(xmlfile1, htmlfile1, xslfile1)
+    #convert_to_xhtml(xmlfile1, htmlfile1, xslfile1)
+    inject_external(xmlfile1,xmlfile1_modified)
 
     xmlfile2 = '{0}.model-rt.xml'.format(args.input, )
-    htmlfile2 = '{0}.model-rt.xhml'.format(args.input, )
+    xmlfile2_modified = '{0}.model2-rt.xml'.format(args.input, )
+    htmlfile2 = '{0}.model-rt.hml'.format(args.input, )
     xslfile2 = "examples/dae-tools-rt.xsl"
+    inject_external(xmlfile2,xmlfile2_modified)
 
     simulation.m.SaveModelReport(xmlfile2)
     # convert_to_xhtml(xmlfile1, htmlfile2, xslfile2)
 
+
+def inject_external(xmlfile, xmlfile_modified):
+
+    origin_str = ('dae-tools.xsl', 'dae-tools.css')
+    destination_str = ('https://s3-us-west-2.amazonaws.com/jaimenms/daetools/dae-tools.xsl',
+                       'https://s3-us-west-2.amazonaws.com/jaimenms/daetools/dae-tools.css')
+
+    try:
+        with open(xmlfile) as f, open(xmlfile_modified, "w") as g:
+
+            text = f.read()
+            for str, str_modified in zip(origin_str, destination_str):
+                text = text.replace(str, str_modified)
+            g.write(text)
+    except:
+        print("File not generated")
 
 
 def convert_to_xhtml(infile, outfile, xslfile):
@@ -99,7 +119,7 @@ if __name__ == "__main__":
     parser.add_argument('--time_horizon', type=int, default= 20*24*3600, help='Time horizon in seconds')
     parser.add_argument('--relative_tolerance', type=float, default= 1e-6, help='Relative tolerance for the integration '
                                                                                 'method.')
-    parser.add_argument('--MaxStep', type=int, default= 100, help='IDAS.MaxStep parameter.')
+    parser.add_argument('--MaxStep', type=int, default= 10., help='IDAS.MaxStep parameter.')
     parser.add_argument('--MaxNumSteps', type=int, default= 1000000, help='IDAS.MaxNumSteps parameter.')
 
     args = parser.parse_args()
@@ -139,6 +159,8 @@ if __name__ == "__main__":
 
         # Initialize
         simulation.Initialize(solver, dr, log)
+        print("Number of equations", simulation.NumberOfEquations)
+        print("Number of variables", simulation.TotalNumberOfVariables)
         save_reports(args)
 
         # Solve at time = 0

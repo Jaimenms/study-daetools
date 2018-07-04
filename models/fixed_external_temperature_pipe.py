@@ -20,23 +20,16 @@ class FixedExternalTemperaturePipe(FixedExternalTemperature, Pipe):
 
 
     def define_parameters(self):
-
         Pipe.define_parameters(self)
         FixedExternalTemperature.define_parameters(self)
 
 
     def define_variables(self):
-
         Pipe.define_variables(self)
         FixedExternalTemperature.define_variables(self)
 
 
     def DeclareEquations(self):
-
         Pipe.DeclareEquations(self)
-        FixedExternalTemperature.eq_total_he(self)
-        FixedExternalTemperature.eq_calculate_To(self)
-        FixedExternalTemperature.eq_calculate_Ti(self)
-        FixedExternalTemperature.eq_calculate_hint(self)
-        FixedExternalTemperature.eq_calculate_resistance(self)
+        FixedExternalTemperature.DeclareEquations(self)
 

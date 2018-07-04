@@ -34,8 +34,6 @@ class FixedExternalTemperature(daeModelExtended):
                                                       (K ** (-1)) * (W ** (1)) * (m ** (-2)), 0.01,
                                                       1000000, 10000, 1e-01)
 
-        self.Qout = daeVariable("Qout", heat_per_length_t, self, "Mass loss per length", [self.x, ])
-
         self.To = daeVariable("To", water_temperature_t, self, "Outside Wall Temperature", [self.x, ])
 
         self.Ti = daeVariable("Ti", water_temperature_t, self, "Internal Wall Temperature", [self.x, ])
@@ -43,15 +41,6 @@ class FixedExternalTemperature(daeModelExtended):
         self.hint = daeVariable("hint", heat_transfer_coefficient_t, self, "Internal convection coefficient", [self.x, ])
 
         self.Resistance = daeVariable("Resistance", thermal_resistance_t, self, "Overall Thermal Resistance", [self.x, ])
-
-
-    def eq_heat_balance(self):
-
-        eq = self.CreateEquation("HeatBal", "Heat balance - T")
-        x = eq.DistributeOnDomain(self.x, eOpenClosed)
-
-        A = 0.25 * 3.14 * self.D(x) ** 2
-        eq.Residual = self.rho(x) * self.cp(x) * dt(A * self.T(x)) + self.k() * self.cp(x) * d( self.T(x), self.x, eCFDM) / self.L() + self.Qout(x)
 
 
     def eq_calculate_hint(self):
@@ -110,10 +99,9 @@ class FixedExternalTemperature(daeModelExtended):
 
 
     def DeclareEquations(self):
+
         daeModelExtended.DeclareEquations(self)
 
-        self.eq_heat_balance()
-        self.eq_total_he()
         self.eq_calculate_To()
         self.eq_calculate_Ti()
         self.eq_calculate_hint()
