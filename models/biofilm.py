@@ -24,7 +24,7 @@ class Biofilm(daeModelExtended):
     def define_variables(self):
 
         # Variable types
-        mass_biofilm_t = daeVariableType("mass_biofilm_t", (kg ** (1)) * (m ** (-2)), 1e-9, 1e+04, 1e-06, 1e-07)
+        mass_biofilm_t = daeVariableType("mass_biofilm_t", (kg ** (1)) * (m ** (-2)), 1e-9, 1e+04, 1e-06, 1e-6)
         b_t = daeVariableType("b_t", (day ** (-1)), 1e-6, 1e+04, 0.2, 1e-06)
         rate_t = daeVariableType("rate_t", (kg ** (1)) * (m ** (-2)) * (day ** (-1)), 1e-9, 1e+04, 0.2, 1e-06)
 
@@ -35,8 +35,10 @@ class Biofilm(daeModelExtended):
         self.b = daeVariable("b", b_t, self, "Biofilm formation specific removal rate", self.Domains)
         self.ratef = daeVariable("ratef", rate_t, self, "Biofilm formation specific removal rate", self.Domains)
 
+
     def define_parameters(self):
 
+        #self.lagt = Constant(24*3600*s)
         self.lagt = Constant(24*3600*s)
 
         self.rhomf = daeParameter("rhomf",(kg ** (1)) * (m ** (-3)), self, "Density of the biofilm")

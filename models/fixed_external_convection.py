@@ -27,13 +27,13 @@ class FixedExternalConvection(daeModelExtended):
     def define_variables(self):
 
         # Variable types
-        water_temperature_t = daeVariableType("temperature_t", (K ** (1)), 273.0, 400.0, 300.0, 0.01)
+        temperature_t = daeVariableType("temperature_t", (K ** (1)), 273.0, 400.0, 300.0, 0.01)
         heat_per_length_t = daeVariableType("heat_per_length_t", (J ** (1)) * (m ** (-1)) * (s ** (-1)), -1e+10, 1e+10, 0.1, 1e-05)
         thermal_resistance_t = daeVariableType("thermal_resistance_t", (K ** (1))*(W ** (-1))*(m ** (1)), -1e-10, 1e+10, 100, 1e-05)
 
-        self.To = daeVariable("To", water_temperature_t, self, "Outside Wall Temperature", [self.x, ])
+        self.To = daeVariable("To", temperature_t, self, "Outside Wall Temperature", [self.x, ])
 
-        self.Ti = daeVariable("Ti", water_temperature_t, self, "Internal Wall Temperature", [self.x, ])
+        self.Ti = daeVariable("Ti", temperature_t, self, "Internal Wall Temperature", [self.x, ])
 
         self.hint = daeVariable("hint", heat_transfer_coefficient_t, self, "Internal convection coefficient", [self.x, ])
 

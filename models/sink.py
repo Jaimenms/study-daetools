@@ -75,7 +75,7 @@ class Sink(Node):
 
         # Mass to the node outlet
         for edge_name in self.get_outlet():
-            residual_aux -= self.Parent.edges[edge_name].Hlb()
+            residual_aux -= self.Parent.submodels[edge_name].Hlb()
 
         eq = self.CreateEquation("NEB_nodal_energy_balance_2")
         eq.Residual = residual_aux

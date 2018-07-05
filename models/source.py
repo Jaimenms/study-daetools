@@ -71,7 +71,7 @@ class Source(Node):
         residual_aux = self.w() * self.Text() * cp_ext * Constant(1 * (J ** (1)) * (K ** (-1)) * (kg ** (-1)))
 
         for edge_name in self.get_inlet():
-            residual_aux += self.Parent.submodels[edge_name].Hup()
+            residual_aux += self.Parent.submodels[edge_name].Hub()
 
         # Mass to the node outlet
         for edge_name in self.get_outlet():

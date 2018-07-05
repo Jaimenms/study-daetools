@@ -32,15 +32,14 @@ class ExternalFilmCondensation(daeModelExtended):
     def define_variables(self):
 
         # Variable types
-        water_temperature_t = daeVariableType("temperature_t", (K ** (1)), 273.0, 400.0, 300.0, 0.01)
-        heat_per_length_t = daeVariableType("heat_per_length_t", (J ** (1)) * (m ** (-1)) * (s ** (-1)), -1e+10, 1e+10, 0.1, 1e-05)
-        thermal_resistance_t = daeVariableType("thermal_resistance_t", (K ** (1))*(W ** (-1))*(m ** (1)), 1e-6, 100., 1e-6, 1e-05)
+        temperature_t = daeVariableType("temperature_t", (K ** (1)), 273.0, 473.0, 310.0, 1e-5)
+        thermal_resistance_t = daeVariableType("thermal_resistance_t", (K ** (1))*(W ** (-1))*(m ** (1)), 1e-6, 1e3, 1e-3, 1e-5)
         heat_transfer_coefficient_t = daeVariableType("heat_transfer_coefficient_t",
-                                                      (K ** (-1)) * (W ** (1)) * (m ** (-2)), 0.01,
-                                                      1000000, 10000, 1e-01)
+                                                      (K ** (-1)) * (W ** (1)) * (m ** (-2)), 1e-3,
+                                                      1e6, 1e3, 1e-5)
 
-        self.To = daeVariable("To", water_temperature_t, self, "Outside Wall Temperature", self.Domains)
-        self.Ti = daeVariable("Ti", water_temperature_t, self, "Inside Wall Temperature", self.Domains)
+        self.To = daeVariable("To", temperature_t, self, "Outside Wall Temperature", self.Domains)
+        self.Ti = daeVariable("Ti", temperature_t, self, "Inside Wall Temperature", self.Domains)
         self.hint = daeVariable("hint", heat_transfer_coefficient_t, self, "Internal Convection coefficient", self.Domains)
         self.hext = daeVariable("hext", heat_transfer_coefficient_t, self, "External Convection coefficient", self.Domains)
         self.Resistance = daeVariable("Resistance", thermal_resistance_t, self, "Overall Thermal Resistance", self.Domains)

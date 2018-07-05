@@ -53,23 +53,31 @@ class Edge(daeModelExtended):
         pass
 
 
-    def eq_nodal_boundaries(self, edge_variable='P', node_variable='P', position='from'):
+    def eq_nodal_boundaries(self, edge_variable='P', edge_dp_variable=None, node_variable='P', position='from'):
 
         nodename = self.get_node(position)
         if nodename:
 
             if position == 'from':
                 domainType = eLowerBound
+                dsignal = -1
             else:
                 domainType = eUpperBound
+                dsignal = +1
 
             eq = self.CreateEquation("BC_{0}_{1}_{2}".format(edge_variable, node_variable, nodename))
             x = eq.DistributeOnDomain(self.x, domainType)
             if self.YDomains:
                 y = eq.DistributeOnDomain(self.y, eClosedClosed)
-                eq.Residual = getattr(self, edge_variable)(x,y) - getattr(self.Parent.submodels[nodename],node_variable)()
+                if edge_dp_variable:
+                    eq.Residual = getattr(self, edge_variable)(x,y) - dsignal * getattr(self, edge_dp_variable)(y) - getattr(self.Parent.submodels[nodename],node_variable)()
+                else:
+                    eq.Residual = getattr(self, edge_variable)(x,y) - getattr(self.Parent.submodels[nodename],node_variable)()
             else:
-                eq.Residual = getattr(self, edge_variable)(x,) - getattr(self.Parent.submodels[nodename],node_variable)()
+                if edge_dp_variable:
+                    eq.Residual = getattr(self, edge_variable)(x,) - dsignal * getattr(self, edge_dp_variable)() - getattr(self.Parent.submodels[nodename],node_variable)()
+                else:
+                    eq.Residual = getattr(self, edge_variable)(x,) - getattr(self.Parent.submodels[nodename],node_variable)()
 
             print("+ edge BC_{0}_{1}_{2}".format(edge_variable, node_variable, nodename))
 
@@ -80,8 +88,11 @@ class Edge(daeModelExtended):
         :return:
         """
 
-        self.eq_nodal_boundaries(edge_variable='P', node_variable='P', position='from')
-        self.eq_nodal_boundaries(edge_variable='P', node_variable='P', position='to')
+        self.eq_nodal_boundaries(edge_variable='P', node_variable='P', position='from', edge_dp_variable='dPlb')
+        self.eq_nodal_boundaries(edge_variable='P', node_variable='P', position='to', edge_dp_variable='dPub')
+
+        #self.eq_nodal_boundaries(edge_variable='P', node_variable='P', position='from', edge_dp_variable=None)
+        #self.eq_nodal_boundaries(edge_variable='P', node_variable='P', position='to', edge_dp_variable=None)
 
 
     def eq_temperature_boundaries(self):

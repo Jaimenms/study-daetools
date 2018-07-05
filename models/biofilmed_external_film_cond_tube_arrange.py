@@ -15,7 +15,8 @@ except:
     from .external_film_condensation_tube_arrange import ExternalFilmCondensationTubeArrange
     from .biofilm import Biofilm
 
-from daetools_extended.tools import get_node_tree, execute_recursive_method, get_initialdata_from_reporter, update_initialdata
+from water_properties import conductivity
+
 
 class BiofilmedExternalFilmCondensationTubeArrange(Biofilm, ExternalFilmCondensationTubeArrange):
 
@@ -41,10 +42,19 @@ class BiofilmedExternalFilmCondensationTubeArrange(Biofilm, ExternalFilmCondensa
         eq = self.CreateEquation("TotalHeat", "Heat balance - Qout")
         x = eq.DistributeOnDomain(self.x, eClosedClosed)
         y = eq.DistributeOnDomain(self.y, eClosedClosed)
+
+        T = self.T(x,y)
+        P = self.P(x,y)
+        Tast = T / Constant(1 * K)
+        Past = P / Constant(1 * Pa)
+
+        kappa = conductivity( Tast, Past, simplified = True)  * Constant(1 * (K ** (-1))*(W ** (1))*(m ** (-1)))
+
+
         Resext = 1 / (self.pi * self.Do() * self.hext(x,y))
         Resint = 1 / (self.pi * self.D(x,y) * self.hint(x,y))
         Reswall = Log(self.Do() / self.Di()) / (2 * self.pi * self.kwall())
-        Resfilm = Log(self.Di() / self.D(x,y)) / (2 * self.pi * self.kappa(x,y)) # Melhorar ajustando T para kappa
+        Resfilm = Log(self.Di() / self.D(x,y)) / (2 * self.pi * kappa) # Melhorar ajustando T para kappa
         eq.Residual = self.Resistance(x,y) - (Resint + Reswall + Resext + Resfilm)
 
 
